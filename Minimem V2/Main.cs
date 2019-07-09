@@ -42,6 +42,7 @@ namespace Minimem
 		public Features.Detouring Detours;
 		public Features.Injector Injector;
 		public Features.Patterns Patterns;
+		public Features.Executor Executor;
 
 		public Main(string processName)
 		{
@@ -63,6 +64,7 @@ namespace Minimem
 			Detours = new Features.Detouring(this);
 			Injector = new Features.Injector(this);
 			Patterns = new Features.Patterns(this);
+			Executor = new Features.Executor(this);
 
 			CallbackThread = new Thread(CallbackLoop)
 			{
@@ -89,6 +91,7 @@ namespace Minimem
 			Detours = new Features.Detouring(this);
 			Injector = new Features.Injector(this);
 			Patterns = new Features.Patterns(this);
+			Executor = new Features.Executor(this);
 
 			CallbackThread = new Thread(CallbackLoop)
 			{

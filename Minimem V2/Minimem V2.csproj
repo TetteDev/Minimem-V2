@@ -110,6 +110,7 @@
     <Compile Include="Features\Allocator.cs" />
     <Compile Include="Features\Assembler.cs" />
     <Compile Include="Features\Detouring.cs" />
+    <Compile Include="Features\Executor.cs" />
     <Compile Include="Features\Injector.cs" />
     <Compile Include="Features\Logger.cs" />
     <Compile Include="Features\Patterns.cs" />
