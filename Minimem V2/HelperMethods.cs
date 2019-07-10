@@ -49,4 +49,16 @@ namespace Minimem
 			return processObject.Modules.Cast<ProcessModule>().ToList();
 		}
 	}
+
+	public static class ProcessModuleExtensions
+	{
+		public static IntPtr EndAddress(this ProcessModule processModuleObject)
+		{
+#if x86
+			return new IntPtr(processModuleObject.BaseAddress.ToInt32() + processModuleObject.ModuleMemorySize);
+#else
+			return new IntPtr(processModuleObject.BaseAddress.ToInt64() + processModuleObject.ModuleMemorySize);
+#endif
+		}
+	}
 }

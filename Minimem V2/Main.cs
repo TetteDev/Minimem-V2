@@ -28,12 +28,43 @@ namespace Minimem
 		{
 			if (!IsValid) throw new InvalidProgramException($"Cannot call method \"Refresh\" as there is nothing to refresh!");
 			Process _processObject = Process.GetProcesses().FirstOrDefault(proc => proc.Id == _processId);
-			if (_processObject == default) throw new InvalidOperationException("Could not refresh attached process data");
-			_process = _processObject;
+			_process = _processObject ?? throw new InvalidOperationException("Could not refresh attached process data");
 			_processName = _processObject.ProcessName;
 			_processId = _processObject.Id;
 		}
+		public void Suspend()
+		{
+			if (IsValid)
+			{
+				foreach (ProcessThread processThread in ProcessObject.Threads)
+				{
+					IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint) processThread.Id);
+					if (threadHandle == IntPtr.Zero)
+						continue;
+					Win32.PInvoke.CloseHandle(threadHandle);
+				}
+			}
+		}
+		public void Resume()
+		{
+			if (IsValid)
+			{
+				foreach (ProcessThread processThread in ProcessObject.Threads)
+				{
+					IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint)processThread.Id);
+					if (threadHandle == IntPtr.Zero)
+						continue;
 
+					var suspendCount = 0;
+					do
+					{
+						suspendCount = Win32.PInvoke.ResumeThread(threadHandle);
+					} while (suspendCount > 0);
+
+					Win32.PInvoke.CloseHandle(threadHandle);
+				}
+			}
+		}
 		public ProcessModule FindProcessModule(string moduleName)
 		{
 			if (string.IsNullOrEmpty(moduleName)) throw new Exception($"Module Name cannot be null or empty!");
