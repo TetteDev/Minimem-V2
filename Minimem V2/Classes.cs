@@ -94,5 +94,13 @@ namespace Minimem
 			WAIT_OBJECT_0 = 0x00000000,
 			WAIT_TIMEOUT = 0x00000102,
 		}
+
+		[Flags]
+		public enum ThreadCreationFlags : uint
+		{
+			StackSizeParamIsAReservation = 65536u,
+			Suspended = 4u,
+			Run = 0u
+		}
 	}
 }

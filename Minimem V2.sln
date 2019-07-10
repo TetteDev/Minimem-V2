@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minimem V2", "Minimem V2\Minimem V2.csproj", "{DFDB1E85-F200-4298-B0C4-012CD6F91EB0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestingProject", "TestingProject\TestingProject.csproj", "{C677EDFF-B87B-46D0-95D0-5C2C8493185D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DFDB1E85-F200-4298-B0C4-012CD6F91EB0} = {DFDB1E85-F200-4298-B0C4-012CD6F91EB0}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

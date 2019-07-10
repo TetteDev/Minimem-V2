@@ -34,6 +34,19 @@ namespace Minimem
 			_processId = _processObject.Id;
 		}
 
+		public ProcessModule FindProcessModule(string moduleName)
+		{
+			if (string.IsNullOrEmpty(moduleName)) throw new Exception($"Module Name cannot be null or empty!");
+			if (!IsValid) throw new Exception($"Reference to Main Class reported an Invalid State");
+
+			foreach (ProcessModule pm in ProcessObject.Modules)
+			{
+				if (pm.ModuleName.ToLower() == moduleName)
+					return pm;
+			}
+			throw new Exception($"Cannot find any process module with name \"{moduleName}\"");
+		}
+
 		public Features.Reader Reader;
 		public Features.Writer Writer;
 		public Features.Logger Logger;
@@ -121,12 +134,8 @@ namespace Minimem
 
 				if (clearCallbacks)
 				{
-					if (!hasJoined)
-					{
-						// force abort it
-						if (CallbackThread.IsAlive)
-							CallbackThread.Abort();
-					}
+					if (CallbackThread.IsAlive)
+						CallbackThread.Abort();
 
 					// Restore stuff here
 				}
@@ -141,7 +150,7 @@ namespace Minimem
 
 		public void CallbackLoop()
 		{
-			Debug.WriteLine($"CallbackThread been started");
+			Debug.WriteLine("CallbackThread been started");
 			while (!_threadExitFlag)
 			{
 				// Loop here
