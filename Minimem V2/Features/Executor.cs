@@ -123,8 +123,17 @@ namespace Minimem.Features
 			if (!returnValue.IsValid)
 				throw new InvalidOperationException("Failed allocating memory for return value - Executor.Execute<T>(IntPtr,CallingConvention,Params)");
 
-			List<string> mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, out List<Classes.RemoteMemory> parameterAllocations);
-			if (mnemonics.Count < 1) return default; // Handle this better
+			List<string> mnemonics = new List<string>();
+			List<Classes.RemoteMemory> parameterAllocations = new List<Classes.RemoteMemory>();
+			try
+			{
+				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, out parameterAllocations);
+			}
+			catch (Exception e)
+			{
+				returnValue.ReleaseMemory();
+				throw e;
+			}
 
 			byte[] asm = _mainReference.Assembler.Assemble(mnemonics.ToArray());
 			Classes.RemoteMemory alloc = _mainReference.Allocator.AllocateMemory(0x10000);
