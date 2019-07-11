@@ -154,6 +154,10 @@ namespace Minimem
 				_processId = -1;
 
 				bool flag = Win32.PInvoke.CloseHandle(_handle);
+				if (!flag)
+				{
+					// Closing of handle failed
+				}
 				_handle = IntPtr.Zero;
 
 				_threadExitFlag = true;
@@ -176,7 +180,32 @@ namespace Minimem
 				_process = null;
 				_processId = -1;
 				_handle = IntPtr.Zero;
+
+				_threadExitFlag = true;
+				bool hasJoined = CallbackThread.IsAlive ? CallbackThread.Join(1000) : true;
+				if (hasJoined)
+					Debug.WriteLine("Callback thread joined successfully!");
+				else
+					throw new TimeoutException("Callback Thread did not join within 1000 ms");
+
+				if (clearCallbacks)
+				{
+					if (CallbackThread.IsAlive)
+						CallbackThread.Abort();
+
+					// Restore stuff here
+				}
 			}
+
+			Reader = null;
+			Writer = null;
+			Logger = null;
+			Allocator = null;
+			Assembler = null;
+			Detours = null;
+			Injector = null;
+			Patterns = null;
+			Executor = null;
 		}
 
 		public void CallbackLoop()

@@ -33,7 +33,7 @@ namespace Minimem.Features
 				return;
 			}
 
-			Win32.PInvoke.WaitForSingleObject(threadHandle, (uint) Classes.WaitForSingleObjectResult.INFINITE);
+			Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
 			Win32.PInvoke.CloseHandle(threadHandle);
 			alloc.ReleaseMemory();
 		}
@@ -92,7 +92,7 @@ namespace Minimem.Features
 			_mainReference.Writer.WriteBytes(alloc.BaseAddress, asm);
 			try
 			{
-				IntPtr threadHandle = Win32.PInvoke.CreateRemoteThread(_mainReference.ProcessHandle, IntPtr.Zero, 0, alloc.BaseAddress, IntPtr.Zero, (uint) Classes.ThreadCreationFlags.Run, out IntPtr threadId);
+				IntPtr threadHandle = Win32.PInvoke.CreateRemoteThread(_mainReference.ProcessHandle, IntPtr.Zero, 0, alloc.BaseAddress, IntPtr.Zero, (uint)Classes.ThreadCreationFlags.Run, out IntPtr threadId);
 				if (threadHandle == IntPtr.Zero)
 				{
 					alloc.ReleaseMemory();
@@ -100,7 +100,7 @@ namespace Minimem.Features
 					throw new InvalidOperationException("Failed using CreateRemoteThread - Executor.Execute<T>");
 				}
 
-				Win32.PInvoke.WaitForSingleObject(threadHandle, (uint) Classes.WaitForSingleObjectResult.INFINITE);
+				Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
 				Win32.PInvoke.CloseHandle(threadHandle);
 
 				return _mainReference.Reader.Read<T>(returnAllocation.BaseAddress);
@@ -109,6 +109,61 @@ namespace Minimem.Features
 			{
 				returnAllocation?.ReleaseMemory();
 				alloc.ReleaseMemory();
+			}
+		}
+
+		public T Execute<T>(IntPtr functionAddress, CallingConvention callingConvention, params dynamic[] parameters) where T : struct
+		{
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+			if (functionAddress == IntPtr.Zero) return default;
+
+			Classes.RemoteMemory returnValue = _mainReference.Allocator.AllocateMemory((uint)Marshal.SizeOf(typeof(T)));
+			if (!returnValue.IsValid)
+				throw new InvalidOperationException("Failed allocating memory for return value - Executor.Execute<T>(IntPtr,CallingConvention,Params)");
+
+			List<string> mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, out List<Classes.RemoteMemory> parameterAllocations);
+			if (mnemonics.Count < 1) return default; // Handle this better
+
+			byte[] asm = _mainReference.Assembler.Assemble(mnemonics.ToArray());
+			Classes.RemoteMemory alloc = _mainReference.Allocator.AllocateMemory(0x10000);
+			if (!alloc.IsValid)
+			{
+				foreach (var parameteralloc in parameterAllocations)
+					parameteralloc.ReleaseMemory();
+
+				returnValue.ReleaseMemory();
+				throw new InvalidOperationException("Failed allocating memory for assembled bytes - Executor.Execute<T>(IntPtr,CallingConvention,Params)");
+			}
+
+			_mainReference.Writer.WriteBytes(alloc.BaseAddress, asm);
+
+			IntPtr threadHandle = Win32.PInvoke.CreateRemoteThread(_mainReference.ProcessHandle, IntPtr.Zero, 0, alloc.BaseAddress, IntPtr.Zero, (uint)Classes.ThreadCreationFlags.Run, out IntPtr threadId);
+			if (threadHandle == IntPtr.Zero)
+			{
+				alloc.ReleaseMemory();
+				foreach (var parameteralloc in parameterAllocations)
+					parameteralloc.ReleaseMemory();
+
+				returnValue.ReleaseMemory();
+				throw new InvalidOperationException("Failed using CreateRemoteThread - Executor.Execute<T>(IntPtr,CallingConvention,Params[])");
+			}
+
+			Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
+			Win32.PInvoke.CloseHandle(threadHandle);
+
+			alloc.ReleaseMemory();
+			foreach (var paramAlloc in parameterAllocations)
+				paramAlloc.ReleaseMemory();
+
+			try
+			{
+				return _mainReference.Reader.Read<T>(returnValue.BaseAddress);
+			}
+			finally
+			{
+				returnValue.ReleaseMemory();
 			}
 		}
 	}
