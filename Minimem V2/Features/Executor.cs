@@ -33,7 +33,7 @@ namespace Minimem.Features
 				return;
 			}
 
-			Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
+			Classes.WaitForSingleObjectResult result = (Classes.WaitForSingleObjectResult)Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
 			Win32.PInvoke.CloseHandle(threadHandle);
 			alloc.ReleaseMemory();
 		}
@@ -100,7 +100,7 @@ namespace Minimem.Features
 					throw new InvalidOperationException("Failed using CreateRemoteThread - Executor.Execute<T>");
 				}
 
-				Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
+				Classes.WaitForSingleObjectResult result = (Classes.WaitForSingleObjectResult)Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
 				Win32.PInvoke.CloseHandle(threadHandle);
 
 				return _mainReference.Reader.Read<T>(returnAllocation.BaseAddress);
@@ -159,8 +159,8 @@ namespace Minimem.Features
 				throw new InvalidOperationException("Failed using CreateRemoteThread - Executor.Execute<T>(IntPtr,CallingConvention,Params[])");
 			}
 
-			Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
-			Win32.PInvoke.CloseHandle(threadHandle);
+			Classes.WaitForSingleObjectResult result = (Classes.WaitForSingleObjectResult)Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
+			bool flagCloseResult = Win32.PInvoke.CloseHandle(threadHandle);
 
 			alloc.ReleaseMemory();
 			foreach (var paramAlloc in parameterAllocations)

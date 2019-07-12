@@ -3,6 +3,7 @@ using System.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Minimem
 {
@@ -123,17 +124,41 @@ namespace Minimem
 
 					mnemonics.Add($"call {functionAddress.ToInt32()}");
 					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
-					if (parameterAllocations.Count > 0)
-						mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
+
+					// Confirm this - caller clean up stack, and not callee
+					//if (parameterAllocations.Count > 0)
+					//	mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
+					// Confirm this
 					mnemonics.Add($"retn");
 					break;
 				default:
-					// what
-					break;
+					throw new Exception("Deal with this");
 			}
 			paramAllocations = parameterAllocationsReturn;
 			mnemonics.Insert(0, $"use32");
 			return mnemonics;
+		}
+
+		[Obsolete("Note to developer; revise this function or remove it")]
+		public string FormatParameter(dynamic param)
+		{
+			bool CanBeStoredInRegisters = false;
+
+			TypeCode typeCode = Type.GetTypeCode(param.GetType());
+			bool IsIntPtr = param.GetType() == typeof(IntPtr);
+			CanBeStoredInRegisters = IsIntPtr ||
+			                         typeCode == TypeCode.Boolean ||
+			                         typeCode == TypeCode.Byte ||
+			                         typeCode == TypeCode.Char ||
+			                         typeCode == TypeCode.Int16 ||
+			                         typeCode == TypeCode.Int32 ||
+			                         typeCode == TypeCode.Int64 ||
+			                         typeCode == TypeCode.SByte ||
+			                         typeCode == TypeCode.Single ||
+			                         typeCode == TypeCode.UInt16 ||
+			                         typeCode == TypeCode.UInt32;
+
+			return CanBeStoredInRegisters ? $"push {param}" : null /* Instead of null return, write value to the memory, and return the base address */;
 		}
 	}
 

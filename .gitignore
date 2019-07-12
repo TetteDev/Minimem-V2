@@ -27,6 +27,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Tt]esting/
+[Tt]esting[Pp]roject[Xx]86/
+[Tt]esting[Pp]roject[Xx]64/
 [Tt]esting[Pp]roject/
 
 # Visual Studio 2015/2017 cache/options directory
@@ -341,3 +343,5 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/Minimem V2/Package
+/TestProjectx64

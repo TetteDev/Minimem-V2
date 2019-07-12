@@ -10,6 +10,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestingProject", "TestingPr
 		{DFDB1E85-F200-4298-B0C4-012CD6F91EB0} = {DFDB1E85-F200-4298-B0C4-012CD6F91EB0}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProjectx64", "TestProjectx64\TestProjectx64.csproj", "{7449C66F-5DB8-442F-AEF3-06E6C71583A7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DFDB1E85-F200-4298-B0C4-012CD6F91EB0} = {DFDB1E85-F200-4298-B0C4-012CD6F91EB0}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug - 32Bit|Any CPU = Debug - 32Bit|Any CPU
@@ -74,6 +79,30 @@ Global
 		{C677EDFF-B87B-46D0-95D0-5C2C8493185D}.Release|x64.Build.0 = Release|Any CPU
 		{C677EDFF-B87B-46D0-95D0-5C2C8493185D}.Release|x86.ActiveCfg = Release|Any CPU
 		{C677EDFF-B87B-46D0-95D0-5C2C8493185D}.Release|x86.Build.0 = Release|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 32Bit|Any CPU.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 32Bit|Any CPU.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 32Bit|x64.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 32Bit|x64.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 32Bit|x86.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 32Bit|x86.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 64bit|Any CPU.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 64bit|Any CPU.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 64bit|x64.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 64bit|x64.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 64bit|x86.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug - 64bit|x86.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug|x64.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Debug|x86.Build.0 = Debug|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Release|x64.ActiveCfg = Release|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Release|x64.Build.0 = Release|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Release|x86.ActiveCfg = Release|Any CPU
+		{7449C66F-5DB8-442F-AEF3-06E6C71583A7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
