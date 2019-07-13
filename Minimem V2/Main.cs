@@ -43,7 +43,7 @@ namespace Minimem
 		{
 			if (IsValid)
 			{
-				bool suspendResult = ProcessObject.Resume();
+				bool suspendResult = ProcessObject.Suspend();
 				/*
 				foreach (ProcessThread processThread in ProcessObject.Threads)
 				{
