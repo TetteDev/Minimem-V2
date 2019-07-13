@@ -77,10 +77,79 @@ namespace Minimem.Features
 			}
 			return IntPtr.Zero;
 		}
-
 		public Task<IntPtr> AsyncFindPattern(ProcessModule processModule, string pattern, bool resultAbsolute = true)
 		{
 			return Task.Run(() => FindPattern(processModule, pattern, resultAbsolute));
+		}
+
+		public List<IntPtr> FindPatternMany(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		{
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+			if (processModule == null || string.IsNullOrEmpty(pattern)) return new List<IntPtr>();
+
+			List<IntPtr> lpResults = new List<IntPtr>();
+			List<byte> bytesPattern = new List<byte>();
+			List<bool> boolMask = new List<bool>();
+
+			byte[] bytesBuffer = _mainReference.Reader.ReadBytes(processModule.BaseAddress, new IntPtr(processModule.ModuleMemorySize));
+			if (bytesBuffer.Length < 1) throw new Exception("Failed reading bytes for region 'processModule'");
+
+			foreach (string s in pattern.Split(' '))
+			{
+				if (string.IsNullOrEmpty(s)) continue;
+				if (s == "?" || s == "??")
+				{
+					bytesPattern.Add(0x0);
+					boolMask.Add(false);
+				}
+				else
+				{
+					byte b;
+					if (byte.TryParse(s, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out b))
+					{
+						bytesPattern.Add(Convert.ToByte(s, 16));
+						boolMask.Add(true);
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+
+			int intIx, intIy = 0;
+			int intPatternLength = bytesPattern.Count;
+			int intDataLength = bytesBuffer.Length - intPatternLength;
+
+			for (intIx = 0; intIx < intDataLength; intIx++)
+			{
+				var boolFound = true;
+				for (intIy = 0; intIy < intPatternLength; intIy++)
+				{
+					if (boolMask[intIy] && bytesPattern[intIy] != bytesBuffer[intIx + intIy])
+					{
+						boolFound = false;
+						break;
+					}
+				}
+
+				if (boolFound)
+				{
+#if x86
+					lpResults.Add(!resultAbsolute ? new IntPtr(intIx) : new IntPtr(processModule.BaseAddress.ToInt32() + intIx));
+#else
+					lpResults.Add(!resultAbsolute ? new IntPtr(intIx) : new IntPtr(processModule.BaseAddress.ToInt64() + intIx));
+#endif
+				}
+			}
+
+			return lpResults;
+		}
+		public Task<List<IntPtr>> AsyncFindPatternMany(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		{
+			return Task.Run(() => FindPatternMany(processModule, pattern, resultAbsolute));
 		}
 	}
 }

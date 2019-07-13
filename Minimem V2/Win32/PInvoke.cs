@@ -59,5 +59,10 @@ namespace Minimem.Win32
 		[DllImport("kernel32.dll")]
 		public static extern int ResumeThread(IntPtr hThread);
 
+		[DllImport("kernel32.dll", SetLastError = true, CallingConvention = CallingConvention.Winapi)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool IsWow64Process([In] IntPtr processHandle,
+			[Out, MarshalAs(UnmanagedType.Bool)] out bool wow64Process);
+
 	}
 }

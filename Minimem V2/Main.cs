@@ -20,6 +20,12 @@ namespace Minimem
 		public IntPtr ProcessHandle => _handle;
 		public int ProcessId => _processId;
 
+		public bool Is64Bit()
+		{
+			if (!IsValid) return false;
+			bool flag = Environment.Is64BitOperatingSystem && (Win32.PInvoke.IsWow64Process(ProcessHandle, out bool retVal) && !retVal);
+			return flag;
+		}
 		public bool IsValid =>
 			_handle != IntPtr.Zero
 			&& _processName != ""
