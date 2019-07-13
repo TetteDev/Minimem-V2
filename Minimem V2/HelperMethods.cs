@@ -3,7 +3,6 @@ using System.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Minimem
 {
@@ -32,7 +31,7 @@ namespace Minimem
 
 		public static byte[] StructureToByteArray(object obj)
 		{
-			if (obj == null) throw new NullReferenceException("Null");
+			if (obj == null) throw new NullReferenceException($"{nameof(obj)} was null when passed to function \"StructureToByteArray(obj)\"");
 			var length = Marshal.SizeOf(obj);
 			var array = new byte[length];
 			var pointer = Marshal.AllocHGlobal(length);
@@ -42,7 +41,7 @@ namespace Minimem
 			return array;
 		}
 
-		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, CallingConvention callingConvention, Main mainRef, out List<Classes.RemoteMemory> paramAllocations)
+		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, out List<Classes.RemoteMemory> paramAllocations)
 		{
 			// Only 32bit atm
 			List<string> mnemonics = new List<string>();
@@ -69,7 +68,7 @@ namespace Minimem
 			int offset = 0;
 			switch (callingConvention)
 			{
-				case CallingConvention.Cdecl:
+				case Classes.CallingConventionsEnum.Cdecl:
 					parameterAllocations.Reverse();
 					foreach (var param in parameterAllocations)
 						mnemonics.Add($"push {param.BaseAddress}");
@@ -79,7 +78,8 @@ namespace Minimem
 					mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
 					mnemonics.Add($"retn");
 					break;
-				case CallingConvention.StdCall:
+				case Classes.CallingConventionsEnum.Winapi:
+				case Classes.CallingConventionsEnum.StdCall:
 					parameterAllocations.Reverse();
 					foreach (var param in parameterAllocations)
 						mnemonics.Add($"push {param.BaseAddress}");
@@ -88,7 +88,7 @@ namespace Minimem
 					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
 					mnemonics.Add($"retn");
 					break;
-				case CallingConvention.FastCall:
+				case Classes.CallingConventionsEnum.FastCall:
 					if (parameterAllocations.Count > 0)
 					{
 						mnemonics.Add($"mov ecx, {parameterAllocations[offset].BaseAddress}");
@@ -110,7 +110,7 @@ namespace Minimem
 					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
 					mnemonics.Add($"retn");
 					break;
-				case CallingConvention.ThisCall:
+				case Classes.CallingConventionsEnum.ThisCall:
 					if (parameterAllocations.Count > 0)
 					{
 						mnemonics.Add($"mov ecx, {parameterAllocations[offset].BaseAddress}");
@@ -131,64 +131,44 @@ namespace Minimem
 					// Confirm this
 					mnemonics.Add($"retn");
 					break;
+				case Classes.CallingConventionsEnum.x64Convention:
+					if (parameterAllocations.Count > 0)
+					{
+						mnemonics.Add($"mov rcx, {parameterAllocations[offset].BaseAddress}");
+						offset++;
+					}
+
+					if (parameterAllocations.Count - offset > 0)
+					{
+						mnemonics.Add($"mov rdx, {parameterAllocations[offset].BaseAddress}");
+						offset++;
+					}
+
+					if (parameterAllocations.Count - offset > 0)
+					{
+						mnemonics.Add($"mov r8, {parameterAllocations[offset].BaseAddress}");
+						offset++;
+					}
+
+					if (parameterAllocations.Count - offset > 0)
+					{
+						mnemonics.Add($"mov r9, {parameterAllocations[offset].BaseAddress}");
+						offset++;
+					}
+
+					parameterAllocations = parameterAllocations.Skip(offset).ToList();
+					foreach (var param in parameterAllocations)
+						mnemonics.Add($"push {param.BaseAddress}");
+					mnemonics.Add($"call {functionAddress.ToInt64()}");
+					mnemonics.Add($"mov [{returnValueAddress.ToInt64()}], rax");
+					mnemonics.Add($"retn");
+					break;
 				default:
-					throw new Exception("Deal with this");
+					throw new InvalidOperationException("Deal with this");
 			}
 			paramAllocations = parameterAllocationsReturn;
-			mnemonics.Insert(0, $"use32");
+			mnemonics.Insert(0, (callingConvention != Classes.CallingConventionsEnum.x64Convention ? $"use32" : "use64"));
 			return mnemonics;
 		}
-
-		[Obsolete("Note to developer; revise this function or remove it")]
-		public string FormatParameter(dynamic param)
-		{
-			bool CanBeStoredInRegisters = false;
-
-			TypeCode typeCode = Type.GetTypeCode(param.GetType());
-			bool IsIntPtr = param.GetType() == typeof(IntPtr);
-			CanBeStoredInRegisters = IsIntPtr ||
-			                         typeCode == TypeCode.Boolean ||
-			                         typeCode == TypeCode.Byte ||
-			                         typeCode == TypeCode.Char ||
-			                         typeCode == TypeCode.Int16 ||
-			                         typeCode == TypeCode.Int32 ||
-			                         typeCode == TypeCode.Int64 ||
-			                         typeCode == TypeCode.SByte ||
-			                         typeCode == TypeCode.Single ||
-			                         typeCode == TypeCode.UInt16 ||
-			                         typeCode == TypeCode.UInt32;
-
-			return CanBeStoredInRegisters ? $"push {param}" : null /* Instead of null return, write value to the memory, and return the base address */;
-		}
-	}
-
-	public static class ProcessExtensions
-	{
-		public static List<ProcessModule> ProcessModules(this Process processObject)
-		{
-			return processObject.Modules.Cast<ProcessModule>().ToList();
-		}
-	}
-
-	public static class ProcessModuleExtensions
-	{
-		public static IntPtr EndAddress(this ProcessModule processModuleObject)
-		{
-#if x86
-			return new IntPtr(processModuleObject.BaseAddress.ToInt32() + processModuleObject.ModuleMemorySize);
-#else
-			return new IntPtr(processModuleObject.BaseAddress.ToInt64() + processModuleObject.ModuleMemorySize);
-#endif
-		}
-	}
-
-	public static class ListExtensions
-	{
-		public static IEnumerable<A> Slice<A>(this IEnumerable<A> list, int from, int to)
-		{
-			return list.Take(to).Skip(from);
-		}
-
-		
 	}
 }

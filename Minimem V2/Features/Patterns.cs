@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace Minimem.Features
 {
@@ -75,6 +76,11 @@ namespace Minimem.Features
 				return new IntPtr(refBufferStartAddress + num3);
 			}
 			return IntPtr.Zero;
+		}
+
+		public Task<IntPtr> AsyncFindPattern(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		{
+			return Task.Run(() => FindPattern(processModule, pattern, resultAbsolute));
 		}
 	}
 }

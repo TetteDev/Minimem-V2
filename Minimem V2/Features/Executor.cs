@@ -112,7 +112,7 @@ namespace Minimem.Features
 			}
 		}
 
-		public T Execute<T>(IntPtr functionAddress, CallingConvention callingConvention, params dynamic[] parameters) where T : struct
+		public T Execute<T>(IntPtr functionAddress, Classes.CallingConventionsEnum callingConvention, params dynamic[] parameters) where T : struct
 		{
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
 			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");

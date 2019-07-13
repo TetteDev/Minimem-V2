@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Threading;
 using System.Linq;
+using Minimem.Extension_Methods;
 
 namespace Minimem
 {
@@ -36,6 +37,8 @@ namespace Minimem
 		{
 			if (IsValid)
 			{
+				bool suspendResult = ProcessObject.Resume();
+				/*
 				foreach (ProcessThread processThread in ProcessObject.Threads)
 				{
 					IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint) processThread.Id);
@@ -43,12 +46,15 @@ namespace Minimem
 						continue;
 					Win32.PInvoke.CloseHandle(threadHandle);
 				}
+				*/
 			}
 		}
 		public void Resume()
 		{
 			if (IsValid)
 			{
+				bool resumeResult = ProcessObject.Resume();
+				/*
 				foreach (ProcessThread processThread in ProcessObject.Threads)
 				{
 					IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint)processThread.Id);
@@ -63,21 +69,10 @@ namespace Minimem
 
 					Win32.PInvoke.CloseHandle(threadHandle);
 				}
+				*/
 			}
 		}
-		public ProcessModule FindProcessModule(string moduleName)
-		{
-			if (string.IsNullOrEmpty(moduleName)) throw new Exception($"Module Name cannot be null or empty!");
-			if (!IsValid) throw new Exception($"Reference to Main Class reported an Invalid State");
-
-			foreach (ProcessModule pm in ProcessObject.Modules)
-			{
-				if (pm.ModuleName.ToLower() == moduleName)
-					return pm;
-			}
-			throw new Exception($"Cannot find any process module with name \"{moduleName}\"");
-		}
-
+		
 		public Features.Reader Reader;
 		public Features.Writer Writer;
 		public Features.Logger Logger;
@@ -109,6 +104,7 @@ namespace Minimem
 			Injector = new Features.Injector(this);
 			Patterns = new Features.Patterns(this);
 			Executor = new Features.Executor(this);
+			Extensions._mainReference = this;
 
 			CallbackThread = new Thread(CallbackLoop)
 			{
@@ -136,6 +132,7 @@ namespace Minimem
 			Injector = new Features.Injector(this);
 			Patterns = new Features.Patterns(this);
 			Executor = new Features.Executor(this);
+			Extensions._mainReference = this;
 
 			CallbackThread = new Thread(CallbackLoop)
 			{
@@ -206,6 +203,7 @@ namespace Minimem
 			Injector = null;
 			Patterns = null;
 			Executor = null;
+			Extensions._mainReference = null;
 		}
 
 		public void CallbackLoop()

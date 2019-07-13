@@ -118,5 +118,18 @@ namespace Minimem
 			THREAD_HIJACK = SUSPEND_RESUME | GET_CONTEXT | SET_CONTEXT,
 			THREAD_ALL = TERMINATE | SUSPEND_RESUME | GET_CONTEXT | SET_CONTEXT | SET_INFORMATION | QUERY_INFORMATION | SET_THREAD_TOKEN | IMPERSONATE | DIRECT_IMPERSONATION
 		}
+
+		public enum CallingConventionsEnum
+		{
+			Winapi = 1,
+			/// <summary>The caller cleans the stack. This enables calling functions with <see langword="varargs" />, which makes it appropriate to use for methods that accept a variable number of parameters, such as <see langword="Printf" />.</summary>
+			Cdecl = 2,
+			/// <summary>The callee cleans the stack. This is the default convention for calling unmanaged functions with platform invoke.</summary>
+			StdCall = 3,
+			/// <summary>The first parameter is the <see langword="this" /> pointer and is stored in register ECX. Other parameters are pushed on the stack. This calling convention is used to call methods on classes exported from an unmanaged DLL.</summary>
+			ThisCall = 4,
+			FastCall = 5,
+			x64Convention = 6,
+		}
 	}
 }

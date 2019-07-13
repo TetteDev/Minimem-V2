@@ -107,6 +107,7 @@
   <ItemGroup>
     <Compile Include="Classes.cs" />
     <Compile Include="Enumerations\ProcessAccessFlags.cs" />
+    <Compile Include="Extension Methods\Extensions.cs" />
     <Compile Include="Features\Allocator.cs" />
     <Compile Include="Features\Assembler.cs" />
     <Compile Include="Features\Detouring.cs" />

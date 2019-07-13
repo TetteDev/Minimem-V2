@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Linq;
+using Minimem.Extension_Methods;
 
 namespace Minimem.Features
 {
