@@ -6,7 +6,7 @@ namespace Minimem.Win32
 	public class PInvoke
 	{
 		[DllImport("kernel32.dll", SetLastError = true)]
-		public static extern IntPtr OpenProcess(Minimem.Enumerations.ProcessAccessFlags.Enumeration processAccess,bool bInheritHandle,int processId);
+		public static extern IntPtr OpenProcess(Enumerations.ProcessAccessFlags.Enumeration processAccess,bool bInheritHandle,int processId);
 
 		[DllImport("kernel32.dll", SetLastError = true)]
 #if x86

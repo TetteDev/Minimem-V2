@@ -14,7 +14,7 @@ namespace Minimem
 		private Process _process = null;
 
 		private bool _threadExitFlag = false;
-		public Thread CallbackThread;
+		public Thread CallbackThread { get; private set; }
 
 		public Process ProcessObject
 		{
@@ -34,13 +34,22 @@ namespace Minimem
 			private set { }
 		}
 
-		public bool Is64Bit => ProcessObject.Is64Bit();
-		
-		public bool IsValid =>
-			_handle != IntPtr.Zero
-			&& _processName != ""
-			&& _processId > 0
-			&& _process != default;
+		public bool Is64Bit
+		{
+			get => ProcessObject.Is64Bit();
+			private set { }
+		}
+
+		public bool IsValid
+		{
+			get =>
+				_handle != IntPtr.Zero
+				&& _processName != ""
+				&& _processId > 0
+				&& _process != default;
+			private set { }
+		}
+			
 		public void Refresh()
 		{
 			if (!IsValid) throw new InvalidProgramException($"Cannot call method \"Refresh\" as there is nothing to refresh!");
@@ -132,7 +141,6 @@ namespace Minimem
 			CallbackThread.Start();
 		}
 
-		[Obsolete("Note To Developer: Dont forget to null out all feature instances")]
 		public void Detach(bool clearCallbacks = true)
 		{
 			if (IsValid)
@@ -153,13 +161,15 @@ namespace Minimem
 				if (hasJoined)
 					Debug.WriteLine("Callback thread joined successfully!");
 				else
-					throw new TimeoutException("Callback Thread did not join within 1000 ms");
+				{
+					Debug.WriteLine($"Callback thread did not join successfully, attemping to force abort it");
+					if (CallbackThread.IsAlive)
+						CallbackThread.Abort();
+					Debug.WriteLine($"Abortion Status: {(CallbackThread.IsAlive ? "Failed!" : "Success!")}");
+				}
 
 				if (clearCallbacks)
 				{
-					if (CallbackThread.IsAlive)
-						CallbackThread.Abort();
-
 					// Restore stuff here
 				}
 			} else
@@ -174,13 +184,15 @@ namespace Minimem
 				if (hasJoined)
 					Debug.WriteLine("Callback thread joined successfully!");
 				else
-					throw new TimeoutException("Callback Thread did not join within 1000 ms");
+				{
+					Debug.WriteLine($"Callback thread did not join successfully, attemping to force abort it");
+					if (CallbackThread.IsAlive)
+						CallbackThread.Abort();
+					Debug.WriteLine($"Abortion Status: {(CallbackThread.IsAlive ? "Failed!" : "Success!")}");
+				}
 
 				if (clearCallbacks)
 				{
-					if (CallbackThread.IsAlive)
-						CallbackThread.Abort();
-
 					// Restore stuff here
 				}
 			}

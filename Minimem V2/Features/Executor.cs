@@ -65,6 +65,13 @@ namespace Minimem.Features
 			}
 			else
 			{
+				returnAllocation = _mainReference.Allocator.AllocateMemory((uint)Marshal.SizeOf(typeof(T)));
+				if (!returnAllocation.IsValid)
+				{
+					alloc.ReleaseMemory();
+					throw new InvalidOperationException("Failed allocating memory for return value - Executor.Execute<T>");
+				}
+
 				int lastCallInstructionPosition = lstMnemonics.FindLastIndex(x => x.ToLower().StartsWith("call"));
 				if (lastCallInstructionPosition != -1)
 				{

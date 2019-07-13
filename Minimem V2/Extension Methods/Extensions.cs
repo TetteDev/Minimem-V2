@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.NetworkInformation;
 using Minimem.Enumerations;
 
 namespace Minimem.Extension_Methods
@@ -9,7 +10,6 @@ namespace Minimem.Extension_Methods
 	public static class Extensions
 	{
 		public static Main _mainReference;
-
 	}
 
 	public static class ProcessExtensions
@@ -64,23 +64,32 @@ namespace Minimem.Extension_Methods
 			return true;
 		}
 
-		public static ProcessModule FindProcessModule(this Process processObject, string moduleName)
+		public static ProcessModule FindProcessModule(this Process processObject, string moduleName, bool sloppySearch = false)
 		{
 			if (string.IsNullOrEmpty(moduleName)) throw new Exception($"Module Name cannot be null or empty!");
-			if (!Extensions._mainReference.IsValid) throw new Exception($"Reference to Main Class reported an Invalid State");
 
 			foreach (ProcessModule pm in processObject.Modules)
 			{
-				if (pm.ModuleName.ToLower() == moduleName)
+				if (sloppySearch && (pm.ModuleName.ToLower().Contains(moduleName.ToLower()) || pm.ModuleName.ToLower().StartsWith(moduleName.ToLower())))
 					return pm;
+				else if (string.Equals(pm.ModuleName, moduleName, StringComparison.CurrentCultureIgnoreCase)) return pm;
 			}
 			throw new Exception($"Cannot find any process module with name \"{moduleName}\"");
 		}
 
-		public static bool Is64Bit(this Process processObject)
+		public static bool Is64Bit(this Process processObject, bool bOpenHandleIfNeeded = false)
 		{
 			if (Extensions._mainReference == null) return false;
-			if (!Extensions._mainReference.IsValid) return false;
+			if (!Extensions._mainReference.IsValid && bOpenHandleIfNeeded)
+			{
+				IntPtr _handle = Win32.PInvoke.OpenProcess(ProcessAccessFlags.Enumeration.All, false, processObject.Id);
+				if (_handle == IntPtr.Zero) return false;
+
+				bool flag_1 = Environment.Is64BitOperatingSystem && (Win32.PInvoke.IsWow64Process(_handle, out bool retVal_1) && !retVal_1);
+				Win32.PInvoke.CloseHandle(_handle);
+				return flag_1;
+			}
+
 			bool flag = Environment.Is64BitOperatingSystem && (Win32.PInvoke.IsWow64Process(Extensions._mainReference.ProcessHandle, out bool retVal) && !retVal);
 			return flag;
 		}

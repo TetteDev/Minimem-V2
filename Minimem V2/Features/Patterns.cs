@@ -31,7 +31,12 @@ namespace Minimem.Features
 			long refBufferStartAddress = resultAbsolute ? processModule.BaseAddress.ToInt64() : 0;
 #endif
 			byte[] buffer = _mainReference.Reader.ReadBytes(processModule.BaseAddress, new IntPtr(processModule.ModuleMemorySize));
-
+			if (buffer == null || buffer.Length != processModule.ModuleMemorySize)
+			{
+				Debug.WriteLine("Failed Reading bytes - FindPattern");
+				return IntPtr.Zero;
+			}
+			
 			var num = 0;
 			if (0 < array.Length)
 				do
