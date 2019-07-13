@@ -76,6 +76,14 @@ namespace Minimem.Extension_Methods
 			}
 			throw new Exception($"Cannot find any process module with name \"{moduleName}\"");
 		}
+
+		public static bool Is64Bit(this Process processObject)
+		{
+			if (Extensions._mainReference == null) return false;
+			if (!Extensions._mainReference.IsValid) return false;
+			bool flag = Environment.Is64BitOperatingSystem && (Win32.PInvoke.IsWow64Process(Extensions._mainReference.ProcessHandle, out bool retVal) && !retVal);
+			return flag;
+		}
 	}
 
 	public static class ProcessModuleExtensions

@@ -8,7 +8,7 @@ namespace Minimem.Features
 {
 	public class Patterns
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Patterns(Main main)
 		{

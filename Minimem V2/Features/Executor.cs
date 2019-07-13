@@ -7,7 +7,7 @@ namespace Minimem.Features
 {
 	public class Executor
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Executor(Main main)
 		{
@@ -127,7 +127,7 @@ namespace Minimem.Features
 			List<Classes.RemoteMemory> parameterAllocations = new List<Classes.RemoteMemory>();
 			try
 			{
-				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, out parameterAllocations);
+				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, typeof(T), out parameterAllocations);
 			}
 			catch (Exception e)
 			{

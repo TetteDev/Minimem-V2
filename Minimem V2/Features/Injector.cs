@@ -10,7 +10,7 @@ namespace Minimem.Features
 {
 	public class Injector
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 		public Injector(Main main)
 		{
 			_mainReference = main ?? throw new Exception($"Parameter \"main\" for constructor of Features.Injector cannot be null");

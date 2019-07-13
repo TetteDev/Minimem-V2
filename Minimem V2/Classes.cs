@@ -6,7 +6,7 @@ namespace Minimem
 	{
 		public class RemoteMemory
 		{
-			private Main _mainReference;
+			private readonly Main _mainReference;
 			public IntPtr BaseAddress;
 			public IntPtr Size;
 

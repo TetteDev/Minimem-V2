@@ -5,7 +5,7 @@ namespace Minimem.Features
 {
 	public class Allocator
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Allocator(Main main)
 		{

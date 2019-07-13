@@ -40,8 +40,8 @@ namespace Minimem
 			Marshal.FreeHGlobal(pointer);
 			return array;
 		}
-
-		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, out List<Classes.RemoteMemory> paramAllocations)
+		[Obsolete("If the X64 calling convention is specified, and the 32bit memory dll is used, errors will come")]
+		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, Type funcReturnType ,out List<Classes.RemoteMemory> paramAllocations)
 		{
 			// Only 32bit atm
 			List<string> mnemonics = new List<string>();
@@ -76,9 +76,8 @@ namespace Minimem
 					mnemonics.Add($"call {functionAddress}");
 					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
 					mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
-					mnemonics.Add($"retn");
 					break;
-				case Classes.CallingConventionsEnum.Winapi:
+				case Classes.CallingConventionsEnum.Winapi: // This defaults to StdCall on windows
 				case Classes.CallingConventionsEnum.StdCall:
 					parameterAllocations.Reverse();
 					foreach (var param in parameterAllocations)
@@ -86,7 +85,6 @@ namespace Minimem
 
 					mnemonics.Add($"call {functionAddress.ToInt32()}");
 					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
-					mnemonics.Add($"retn");
 					break;
 				case Classes.CallingConventionsEnum.FastCall:
 					if (parameterAllocations.Count > 0)
@@ -108,7 +106,6 @@ namespace Minimem
 
 					mnemonics.Add($"call {functionAddress.ToInt32()}");
 					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
-					mnemonics.Add($"retn");
 					break;
 				case Classes.CallingConventionsEnum.ThisCall:
 					if (parameterAllocations.Count > 0)
@@ -129,7 +126,6 @@ namespace Minimem
 					//if (parameterAllocations.Count > 0)
 					//	mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
 					// Confirm this
-					mnemonics.Add($"retn");
 					break;
 				case Classes.CallingConventionsEnum.x64Convention:
 					if (parameterAllocations.Count > 0)
@@ -160,14 +156,19 @@ namespace Minimem
 					foreach (var param in parameterAllocations)
 						mnemonics.Add($"push {param.BaseAddress}");
 					mnemonics.Add($"call {functionAddress.ToInt64()}");
-					mnemonics.Add($"mov [{returnValueAddress.ToInt64()}], rax");
-					mnemonics.Add($"retn");
+
+					if (funcReturnType == typeof(float) || funcReturnType == typeof(double))
+						mnemonics.Add($"mov [{returnValueAddress.ToInt64()}], XMM0");
+					else
+						mnemonics.Add($"mov [{returnValueAddress.ToInt64()}], rax");
+
 					break;
 				default:
 					throw new InvalidOperationException("Deal with this");
 			}
 			paramAllocations = parameterAllocationsReturn;
 			mnemonics.Insert(0, (callingConvention != Classes.CallingConventionsEnum.x64Convention ? $"use32" : "use64"));
+			mnemonics.Add((callingConvention == Classes.CallingConventionsEnum.x64Convention ? "ret" : "retn"));
 			return mnemonics;
 		}
 	}

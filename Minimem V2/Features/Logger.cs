@@ -7,7 +7,7 @@ namespace Minimem.Features
 {
 	public class Logger
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Logger(Main main)
 		{

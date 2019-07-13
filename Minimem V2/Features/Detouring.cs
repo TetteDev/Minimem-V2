@@ -5,7 +5,7 @@ namespace Minimem.Features
 {
 	public class Detouring
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Detouring(Main main)
 		{

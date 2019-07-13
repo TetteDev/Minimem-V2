@@ -7,7 +7,7 @@ namespace Minimem.Features
 {
 	public class Reader
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Reader(Main main)
 		{

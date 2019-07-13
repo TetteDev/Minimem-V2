@@ -6,7 +6,7 @@ namespace Minimem.Features
 {
 	public class Writer
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 
 		public Writer(Main main)
 		{

@@ -6,7 +6,7 @@ namespace Minimem.Features
 {
 	public class Assembler
 	{
-		private Main _mainReference;
+		private readonly Main _mainReference;
 		public Assembler(Main main)
 		{
 			_mainReference = main ?? throw new Exception($"Parameter \"main\" for constructor of Features.Assembler cannot be null");

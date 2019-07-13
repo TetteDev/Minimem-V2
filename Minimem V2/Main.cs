@@ -16,16 +16,26 @@ namespace Minimem
 		private bool _threadExitFlag = false;
 		public Thread CallbackThread;
 
-		public Process ProcessObject => _process;
-		public IntPtr ProcessHandle => _handle;
-		public int ProcessId => _processId;
-
-		public bool Is64Bit()
+		public Process ProcessObject
 		{
-			if (!IsValid) return false;
-			bool flag = Environment.Is64BitOperatingSystem && (Win32.PInvoke.IsWow64Process(ProcessHandle, out bool retVal) && !retVal);
-			return flag;
+			get => _process;
+			private set { }
 		}
+
+		public IntPtr ProcessHandle
+		{
+			get => _handle;
+			private set { }
+		}
+
+		public int ProcessId
+		{
+			get => _processId;
+			private set { }
+		}
+
+		public bool Is64Bit => ProcessObject.Is64Bit();
+		
 		public bool IsValid =>
 			_handle != IntPtr.Zero
 			&& _processName != ""
@@ -44,15 +54,6 @@ namespace Minimem
 			if (IsValid)
 			{
 				bool suspendResult = ProcessObject.Suspend();
-				/*
-				foreach (ProcessThread processThread in ProcessObject.Threads)
-				{
-					IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint) processThread.Id);
-					if (threadHandle == IntPtr.Zero)
-						continue;
-					Win32.PInvoke.CloseHandle(threadHandle);
-				}
-				*/
 			}
 		}
 		public void Resume()
@@ -60,34 +61,18 @@ namespace Minimem
 			if (IsValid)
 			{
 				bool resumeResult = ProcessObject.Resume();
-				/*
-				foreach (ProcessThread processThread in ProcessObject.Threads)
-				{
-					IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint)processThread.Id);
-					if (threadHandle == IntPtr.Zero)
-						continue;
-
-					var suspendCount = 0;
-					do
-					{
-						suspendCount = Win32.PInvoke.ResumeThread(threadHandle);
-					} while (suspendCount > 0);
-
-					Win32.PInvoke.CloseHandle(threadHandle);
-				}
-				*/
 			}
 		}
 		
-		public Features.Reader Reader;
-		public Features.Writer Writer;
-		public Features.Logger Logger;
-		public Features.Allocator Allocator;
-		public Features.Assembler Assembler;
-		public Features.Detouring Detours;
-		public Features.Injector Injector;
-		public Features.Patterns Patterns;
-		public Features.Executor Executor;
+		public Features.Reader Reader { get; private set; }
+		public Features.Writer Writer { get; private set; }
+		public Features.Logger Logger { get; private set; }
+		public Features.Allocator Allocator { get; private set; }
+		public Features.Assembler Assembler { get; private set; }
+		public Features.Detouring Detours { get; private set; }
+		public Features.Injector Injector { get; private set; }
+		public Features.Patterns Patterns { get; private set; }
+		public Features.Executor Executor { get; private set; }
 
 		public Main(string processName)
 		{
