@@ -49,7 +49,17 @@ namespace Minimem
 				&& _process != default;
 			private set { }
 		}
-			
+
+		public bool IsRunning
+		{
+			get
+			{
+				if (ProcessObject == null) return false;
+				return Process.GetProcesses().FirstOrDefault(x => x.Id == ProcessObject.Id) != default;
+			}
+			private set { }
+		}
+
 		public void Refresh()
 		{
 			if (!IsValid) throw new InvalidProgramException($"Cannot call method \"Refresh\" as there is nothing to refresh!");

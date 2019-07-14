@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -49,7 +50,6 @@ namespace Minimem.Features
 			return Task.Run(() => WriteBytes(address, buffer));
 		}
 
-
 		public bool WriteString(IntPtr address, string value, Encoding encoding)
 		{
 			if (address == IntPtr.Zero || value.Length < 1) return false;
@@ -68,6 +68,37 @@ namespace Minimem.Features
 		public Task<bool> AsyncWriteString(IntPtr address, string value, Encoding encoding)
 		{
 			return Task.Run(() => AsyncWriteString(address, value, encoding));
+		}
+
+		public bool WriteArray<T>(IntPtr address, T[] arr) where T : struct
+		{
+			if (address == IntPtr.Zero || arr.Length < 1) return false;
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+
+			int itemSize = Marshal.SizeOf(typeof(T));
+#if x86
+			int stepsNeeded = arr.Length;
+#else
+			long stepsNeeded = arr.LongLength;
+#endif
+
+			for (int stepIdx = 0; stepIdx < stepsNeeded; stepIdx++)
+			{
+#if x86
+				_mainReference.Writer.Write(new IntPtr(address.ToInt32() + (itemSize * stepIdx)), arr[stepIdx]);
+#else
+				_mainReference.Writer.Write(new IntPtr(address.ToInt64() + (long)(itemSize * stepIdx)), arr[stepIdx]);
+#endif
+			}
+
+			return true;
+		}
+
+		public Task<bool> AsyncWriteArray<T>(IntPtr address, T[] arr) where T : struct
+		{
+			return Task.Run(() => WriteArray<T>(address, arr));
 		}
 	}
 }

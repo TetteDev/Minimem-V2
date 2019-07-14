@@ -41,7 +41,7 @@ namespace Minimem
 			return array;
 		}
 		[Obsolete("If the X64 calling convention is specified, and the 32bit memory dll is used, errors will come")]
-		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, Type funcReturnType ,out List<Classes.RemoteMemory> paramAllocations)
+		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, Type funcReturnType,bool Process64Bit,out List<Classes.RemoteMemory> paramAllocations)
 		{
 			// Only 32bit atm
 			List<string> mnemonics = new List<string>();
@@ -119,8 +119,8 @@ namespace Minimem
 					foreach (var param in parameterAllocations)
 						mnemonics.Add($"push {param.BaseAddress}");
 
-					mnemonics.Add($"call {functionAddress.ToInt32()}");
-					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
+					mnemonics.Add($"call {(Process64Bit ? functionAddress.ToInt64().ToString() : functionAddress.ToInt32().ToString())}");
+					mnemonics.Add($"mov [{(Process64Bit ? returnValueAddress.ToInt64().ToString() : returnValueAddress.ToInt32().ToString())}], eax");
 
 					// Confirm this - caller clean up stack, and not callee
 					//if (parameterAllocations.Count > 0)
@@ -170,6 +170,5 @@ namespace Minimem
 			mnemonics.Insert(0, (callingConvention != Classes.CallingConventionsEnum.x64Convention ? $"use32" : "use64"));
 			mnemonics.Add((callingConvention == Classes.CallingConventionsEnum.x64Convention ? "ret" : "retn"));
 			return mnemonics;
-		}
-	}
+		} }
 }

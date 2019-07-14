@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -70,6 +72,35 @@ namespace Minimem.Features
 		public Task<byte[]> AsyncReadBytes(IntPtr address, IntPtr size)
 		{
 			return Task.Run(() => ReadBytes(address, size));
+		}
+
+		public T[] ReadArray<T>(IntPtr address, IntPtr count) where T : struct
+		{
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+			if (address == IntPtr.Zero || count == IntPtr.Zero || (int) count < 0) return null;
+
+			int itemSize = Marshal.SizeOf(typeof(T));
+#if x86
+			int totalSize = itemSize * count.ToInt32();
+#else
+			long totalSize = itemSize * count.ToInt64();
+#endif
+			List<byte> buff = _mainReference.Reader.ReadBytes(address, new IntPtr(totalSize)).ToList();
+			if (buff.Count < 1) return null;
+			List<T> returnArray = new List<T>();
+
+			for (int idx = 0; idx < buff.Count; idx += itemSize)
+			{
+				returnArray.Add(HelperMethods.ByteArrayToStructure<T>(buff.Skip(idx).Take(itemSize).ToArray()));
+			}
+
+			return returnArray.ToArray();
+		}
+		public Task<T[]> AsyncReadArray<T>(IntPtr address, IntPtr count) where T : struct
+		{
+			return Task.Run(() => ReadArray<T>(address, count));
 		}
 	}
 }

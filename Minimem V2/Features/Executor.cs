@@ -134,7 +134,7 @@ namespace Minimem.Features
 			List<Classes.RemoteMemory> parameterAllocations = new List<Classes.RemoteMemory>();
 			try
 			{
-				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, typeof(T), out parameterAllocations);
+				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, typeof(T),_mainReference.Is64Bit, out parameterAllocations);
 			}
 			catch (Exception e)
 			{
