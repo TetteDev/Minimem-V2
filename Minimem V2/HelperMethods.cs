@@ -3,6 +3,7 @@ using System.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace Minimem
 {
@@ -28,6 +29,7 @@ namespace Minimem
 				handle.Free();
 			}
 		}
+
 
 		public static byte[] StructureToByteArray(object obj)
 		{

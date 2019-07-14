@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
+using Minimem.Extension_Methods;
 
 namespace Minimem.Features
 {
@@ -15,7 +17,7 @@ namespace Minimem.Features
 			_mainReference = main ?? throw new Exception($"Parameter \"main\" for constructor of Features.Patterns cannot be null");
 		}
 
-		public IntPtr FindPattern(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		private IntPtr FindPattern(ProcessModule processModule, string pattern, bool resultAbsolute = true)
 		{
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
 			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
@@ -82,12 +84,12 @@ namespace Minimem.Features
 			}
 			return IntPtr.Zero;
 		}
-		public Task<IntPtr> AsyncFindPattern(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		private Task<IntPtr> AsyncFindPattern(ProcessModule processModule, string pattern, bool resultAbsolute = true)
 		{
 			return Task.Run(() => FindPattern(processModule, pattern, resultAbsolute));
 		}
 
-		public List<IntPtr> FindPatternMany(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		private List<IntPtr> FindPatternMany(ProcessModule processModule, string pattern, bool resultAbsolute = true)
 		{
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
 			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
@@ -152,7 +154,117 @@ namespace Minimem.Features
 
 			return lpResults;
 		}
-		public Task<List<IntPtr>> AsyncFindPatternMany(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		private Task<List<IntPtr>> AsyncFindPatternMany(ProcessModule processModule, string pattern, bool resultAbsolute = true)
+		{
+			return Task.Run(() => FindPatternMany(processModule, pattern, resultAbsolute));
+		}
+
+		public IntPtr FindPattern(string processModule, string pattern, bool resultAbsolute = true)
+		{
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+			if (string.IsNullOrEmpty(processModule) || string.IsNullOrEmpty(pattern)) return IntPtr.Zero;
+
+			ProcessModule pm = _mainReference.ProcessObject.FindProcessModule(processModule, true);
+			if (pm == default) throw new NullReferenceException($"Cannot find a process module inside process \"{_mainReference.ProcessObject.ProcessName}\" with the name \"{processModule}\"");
+			byte[] buff = _mainReference.Reader.ReadBytes(pm.BaseAddress, new IntPtr(pm.ModuleMemorySize));
+			string[] pat = pattern.TrimStart(' ').TrimEnd(' ').Split(' ');
+			int matchCount = 0;
+
+#if x86
+			for (int pCur = 0; pCur < pm.ModuleMemorySize; pCur++)
+#else
+			for (long pCur = 0L; pCur < pm.ModuleMemorySize; pCur++)
+#endif
+			{
+				if (pat[matchCount] == "?" || pat[matchCount] == "??")
+					matchCount++;
+				else if (!pat[matchCount].Contains("?") && buff[pCur] == Convert.ToByte(pat[matchCount], 16))
+					matchCount++;
+				else
+				{
+					if (pat[matchCount].Contains("?"))
+					{
+						(string LeftNibble, string RightNibble) patSplit = pat[matchCount].SplitAt(1);
+						(string LeftNibble, string RightNibble) buffSplit = $"{buff[pCur]:X}".SplitAt(1);
+
+						if (patSplit.LeftNibble == "?" && (string.Equals(patSplit.RightNibble,buffSplit.RightNibble, StringComparison.CurrentCultureIgnoreCase) || string.IsNullOrEmpty(buffSplit.RightNibble)) ||
+						    patSplit.RightNibble == "?" && (string.Equals(patSplit.LeftNibble, buffSplit.LeftNibble, StringComparison.CurrentCultureIgnoreCase) || string.IsNullOrEmpty(buffSplit.LeftNibble)))
+							matchCount++;
+						else
+							matchCount = 0;
+					}
+					else
+					{
+						matchCount = 0;
+					}
+				} 
+				
+				if (matchCount >= pat.Length)
+					return new IntPtr(resultAbsolute ? pm.BaseAddress.ToInt64() + pCur - pat.Length + 1 : pCur - pat.Length + 1);
+			}
+
+			return IntPtr.Zero;
+		}
+		public Task<IntPtr> AsyncFindPattern(string processModule, string pattern, bool resultAbsolute = true)
+		{
+			return Task.Run(() => FindPattern(processModule, pattern, resultAbsolute));
+		}
+
+		public List<IntPtr> FindPatternMany(string processModule, string pattern, bool resultAbsolute = true)
+		{
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+			if (string.IsNullOrEmpty(processModule) || string.IsNullOrEmpty(pattern)) return new List<IntPtr>();
+
+			ProcessModule pm = _mainReference.ProcessObject.FindProcessModule(processModule, true);
+			if (pm == default) throw new NullReferenceException($"Cannot find a process module inside process \"{_mainReference.ProcessObject.ProcessName}\" with the name \"{processModule}\"");
+			byte[] buff = _mainReference.Reader.ReadBytes(pm.BaseAddress, new IntPtr(pm.ModuleMemorySize));
+			string[] pat = pattern.TrimStart(' ').TrimEnd(' ').Split(' ');
+			int matchCount = 0;
+
+			List<IntPtr> results = new List<IntPtr>();
+#if x86
+			for (int pCur = 0; pCur < pm.ModuleMemorySize; pCur++)
+#else
+			for (long pCur = 0L; pCur < pm.ModuleMemorySize; pCur++)
+#endif
+			{
+				if (pat[matchCount] == "?" || pat[matchCount] == "??")
+					matchCount++;
+				else if (!pat[matchCount].Contains("?") && buff[pCur] == Convert.ToByte(pat[matchCount], 16))
+					matchCount++;
+				else
+				{
+					if (pat[matchCount].Contains("?"))
+					{
+						(string LeftNibble, string RightNibble) patSplit = pat[matchCount].SplitAt(1);
+						(string LeftNibble, string RightNibble) buffSplit = $"{buff[pCur]:X}".SplitAt(1);
+
+						if (patSplit.LeftNibble == "?" && (string.Equals(patSplit.RightNibble, buffSplit.RightNibble, StringComparison.CurrentCultureIgnoreCase) || string.IsNullOrEmpty(buffSplit.RightNibble)) ||
+							patSplit.RightNibble == "?" && (string.Equals(patSplit.LeftNibble, buffSplit.LeftNibble, StringComparison.CurrentCultureIgnoreCase) || string.IsNullOrEmpty(buffSplit.LeftNibble)))
+							matchCount++;
+						else
+							matchCount = 0;
+					}
+					else
+					{
+						matchCount = 0;
+					}
+				}
+
+				if (matchCount >= pat.Length)
+				{
+					results.Add(new IntPtr(resultAbsolute ? pm.BaseAddress.ToInt64() + pCur - pat.Length + 1 : pCur - pat.Length + 1));
+					matchCount = 0;
+				}
+			}
+
+			return results;
+		}
+		public Task<List<IntPtr>> AsyncFindPatternMany(string processModule, string pattern, bool resultAbsolute = true)
 		{
 			return Task.Run(() => FindPatternMany(processModule, pattern, resultAbsolute));
 		}

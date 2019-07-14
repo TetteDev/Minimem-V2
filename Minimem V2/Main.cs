@@ -104,6 +104,7 @@ namespace Minimem
 			_process = Process.GetProcesses().First(proc => proc.Id == processId);
 			_processId = processId;
 			_processName = processName;
+			_threadExitFlag = false;
 
 			Reader = new Features.Reader(this);
 			Writer = new Features.Writer(this);
@@ -116,11 +117,12 @@ namespace Minimem
 			Executor = new Features.Executor(this);
 			Extensions._mainReference = this;
 
-			CallbackThread = new Thread(CallbackLoop)
+			/*CallbackThread = new Thread(CallbackLoop)
 			{
 				IsBackground = true
 			};
 			CallbackThread.Start();
+			*/
 		}
 
 		public Main(int processId)
@@ -132,6 +134,7 @@ namespace Minimem
 			_processName = _process.ProcessName;
 			_handle = handle;
 			_processId = processId;
+			_threadExitFlag = false;
 
 			Reader = new Features.Reader(this);
 			Writer = new Features.Writer(this);
@@ -144,11 +147,13 @@ namespace Minimem
 			Executor = new Features.Executor(this);
 			Extensions._mainReference = this;
 
+			/*
 			CallbackThread = new Thread(CallbackLoop)
 			{
 				IsBackground = true
 			};
 			CallbackThread.Start();
+			*/
 		}
 
 		public void Detach(bool clearCallbacks = true)
@@ -167,7 +172,7 @@ namespace Minimem
 				_handle = IntPtr.Zero;
 
 				_threadExitFlag = true;
-				bool hasJoined = CallbackThread.IsAlive ? CallbackThread.Join(1000) : true;
+				bool hasJoined = CallbackThread == null || !CallbackThread.IsAlive || CallbackThread.Join(1000);
 				if (hasJoined)
 					Debug.WriteLine("Callback thread joined successfully!");
 				else
@@ -190,7 +195,7 @@ namespace Minimem
 				_handle = IntPtr.Zero;
 
 				_threadExitFlag = true;
-				bool hasJoined = CallbackThread.IsAlive ? CallbackThread.Join(1000) : true;
+				bool hasJoined = CallbackThread == null || !CallbackThread.IsAlive || CallbackThread.Join(1000);
 				if (hasJoined)
 					Debug.WriteLine("Callback thread joined successfully!");
 				else

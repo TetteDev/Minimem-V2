@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Runtime.CompilerServices;
 using Minimem.Enumerations;
 
 namespace Minimem.Extension_Methods
@@ -12,6 +13,12 @@ namespace Minimem.Extension_Methods
 		public static Main _mainReference;
 	}
 
+	public static class StringExtensions
+	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static (string left, string right) SplitAt(this string text, int index) =>
+			(text.Substring(0, index), text.Substring(index));
+	}
 	public static class ProcessExtensions
 	{
 		public static List<ProcessModule> ProcessModules(this Process processObject)
