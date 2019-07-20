@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -9,12 +10,83 @@ namespace Minimem
 {
 	public class HelperMethods
 	{
-		public static int TranslateProcessNameIntoProcessId(string processName)
+		public static void CompareScanMulti(Classes.MemoryRegionResult item, ref List<Tuple<Classes.MultiAobItem, ConcurrentBag<long>>> aobCollection, IntPtr processHandle)
+		{
+			if (processHandle == IntPtr.Zero) return;
+			foreach (var aobToSearchFor in aobCollection)
+			{
+				if (aobToSearchFor.Item1.Mask.Length != aobToSearchFor.Item1.Pattern.Length)
+					throw new ArgumentException($"{nameof(aobToSearchFor.Item1.Pattern)}.Length != {nameof(aobToSearchFor.Item1.Mask)}.Length");
+			}
+
+			IntPtr buffer = Marshal.AllocHGlobal((int)item.RegionSize);
+			Win32.PInvoke.ReadProcessMemoryMulti(processHandle, item.CurrentBaseAddress, buffer, (UIntPtr)item.RegionSize, out ulong bytesRead);
+
+			foreach (var aobPattern in aobCollection)
+			{
+				int result = 0 - aobPattern.Item1.Pattern.Length;
+				unsafe
+				{
+					do
+					{
+
+						result = FindPattern((byte*)buffer.ToPointer(), (int)bytesRead, aobPattern.Item1.Pattern, aobPattern.Item1.Mask, result + aobPattern.Item1.Pattern.Length);
+
+						if (result >= 0)
+							aobPattern.Item2.Add((long)item.CurrentBaseAddress + result);
+
+					} while (result != -1);
+				}
+			}
+
+			Marshal.FreeHGlobal(buffer);
+		}
+
+		private static unsafe int FindPattern(byte* body, int bodyLength, byte[] pattern, byte[] masks, int start = 0)
+		{
+			int foundIndex = -1;
+
+			if (bodyLength <= 0 || pattern.Length <= 0 || start > bodyLength - pattern.Length ||
+			    pattern.Length > bodyLength) return foundIndex;
+
+			for (int index = start; index <= bodyLength - pattern.Length; index++)
+			{
+				if (((body[index] & masks[0]) != (pattern[0] & masks[0]))) continue;
+
+				var match = true;
+				for (int index2 = 1; index2 <= pattern.Length - 1; index2++)
+				{
+					if ((body[index + index2] & masks[index2]) == (pattern[index2] & masks[index2])) continue;
+					match = false;
+					break;
+
+				}
+
+				if (!match) continue;
+
+				foundIndex = index;
+				break;
+			}
+
+			return foundIndex;
+		}
+
+		public static int TranslateProcessNameIntoProcessId(string processName, bool sloppySearch = false)
 		{
 			if (string.IsNullOrEmpty(processName)) return -1;
-			var _procObj = Process.GetProcesses().FirstOrDefault(proc => proc.ProcessName == processName);
-			if (_procObj == default) return -1;
-			return _procObj.Id;
+			if (sloppySearch)
+			{
+				var _procObjSloppy = Process.GetProcesses().FirstOrDefault(proc => proc.ProcessName.ToLower().Contains(processName.ToLower()));
+				if (_procObjSloppy == default) return -1;
+				return _procObjSloppy.Id;
+			}
+			else
+			{
+				var _procObj = Process.GetProcesses().FirstOrDefault(proc => proc.ProcessName == processName);
+				if (_procObj == default) return -1;
+				return _procObj.Id;
+			}
+
 		}
 
 		public static T ByteArrayToStructure<T>(byte[] bytes) where T : struct
@@ -76,7 +148,6 @@ namespace Minimem
 						mnemonics.Add($"push {param.BaseAddress}");
 
 					mnemonics.Add($"call {functionAddress}");
-					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
 					mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
 					break;
 				case Classes.CallingConventionsEnum.Winapi: // This defaults to StdCall on windows
@@ -86,7 +157,6 @@ namespace Minimem
 						mnemonics.Add($"push {param.BaseAddress}");
 
 					mnemonics.Add($"call {functionAddress.ToInt32()}");
-					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
 					break;
 				case Classes.CallingConventionsEnum.FastCall:
 					if (parameterAllocations.Count > 0)
@@ -107,7 +177,6 @@ namespace Minimem
 						mnemonics.Add($"push {param.BaseAddress}");
 
 					mnemonics.Add($"call {functionAddress.ToInt32()}");
-					mnemonics.Add($"mov [{returnValueAddress.ToInt32()}], eax");
 					break;
 				case Classes.CallingConventionsEnum.ThisCall:
 					if (parameterAllocations.Count > 0)
@@ -122,12 +191,6 @@ namespace Minimem
 						mnemonics.Add($"push {param.BaseAddress}");
 
 					mnemonics.Add($"call {(Process64Bit ? functionAddress.ToInt64().ToString() : functionAddress.ToInt32().ToString())}");
-					mnemonics.Add($"mov [{(Process64Bit ? returnValueAddress.ToInt64().ToString() : returnValueAddress.ToInt32().ToString())}], eax");
-
-					// Confirm this - caller clean up stack, and not callee
-					//if (parameterAllocations.Count > 0)
-					//	mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");
-					// Confirm this
 					break;
 				case Classes.CallingConventionsEnum.x64Convention:
 					if (parameterAllocations.Count > 0)
@@ -158,11 +221,6 @@ namespace Minimem
 					foreach (var param in parameterAllocations)
 						mnemonics.Add($"push {param.BaseAddress}");
 					mnemonics.Add($"call {functionAddress.ToInt64()}");
-
-					if (funcReturnType == typeof(float) || funcReturnType == typeof(double))
-						mnemonics.Add($"mov [{returnValueAddress.ToInt64()}], XMM0");
-					else
-						mnemonics.Add($"mov [{returnValueAddress.ToInt64()}], rax");
 
 					break;
 				default:

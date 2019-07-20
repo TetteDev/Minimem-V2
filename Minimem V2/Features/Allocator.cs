@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using static Minimem.Classes;
 
 namespace Minimem.Features
@@ -6,7 +7,7 @@ namespace Minimem.Features
 	public class Allocator
 	{
 		private readonly Main _mainReference;
-
+		public readonly List<(DateTime Tmestamp, RemoteMemory AllocationObject)> Allocations = new List<(DateTime, RemoteMemory)>();
 		public Allocator(Main main)
 		{
 			_mainReference = main ?? throw new Exception($"Parameter \"main\" for constructor of Features.Allocator cannot be null");
@@ -24,7 +25,11 @@ namespace Minimem.Features
 
 			IntPtr baseAddress = Win32.PInvoke.VirtualAllocEx(_mainReference.ProcessHandle, IntPtr.Zero, size, allocationType, protectionType);
 			if (baseAddress != IntPtr.Zero)
-				return new RemoteMemory(baseAddress, (IntPtr)size, allocationType, protectionType, _mainReference);
+			{
+				RemoteMemory alloc = new RemoteMemory(baseAddress, (IntPtr)size, allocationType, protectionType, _mainReference);
+				Allocations.Add((Tmestamp: DateTime.Now, AllocationObject: alloc));
+				return alloc;
+			}
 			return new RemoteMemory(IntPtr.Zero, (IntPtr)0, AllocationType.Invalid, MemoryProtection.Invalid, null);
 		}
 	}

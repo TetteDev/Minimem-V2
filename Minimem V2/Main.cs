@@ -70,14 +70,14 @@ namespace Minimem
 		}
 		public void Suspend()
 		{
-			if (IsValid)
+			if (IsValid && IsRunning)
 			{
 				bool suspendResult = ProcessObject.Suspend();
 			}
 		}
 		public void Resume()
 		{
-			if (IsValid)
+			if (IsValid && IsRunning)
 			{
 				bool resumeResult = ProcessObject.Resume();
 			}
@@ -93,10 +93,10 @@ namespace Minimem
 		public Features.Patterns Patterns { get; private set; }
 		public Features.Executor Executor { get; private set; }
 
-		public Main(string processName)
+		public Main(string processName, bool sloppySearch = false)
 		{
 			if (string.IsNullOrEmpty(processName)) throw new InvalidOperationException($"Parameter \"processName\" for constructor of Minimem.Main cannot be empty!");
-			int processId = HelperMethods.TranslateProcessNameIntoProcessId(processName);
+			int processId = HelperMethods.TranslateProcessNameIntoProcessId(processName, sloppySearch);
 			if (processId == -1) throw new Exception($"Cannot find a process with process name \"{processName}\"");
 			IntPtr handle = Win32.PInvoke.OpenProcess(Enumerations.ProcessAccessFlags.Enumeration.All, false, processId);
 			if (handle == IntPtr.Zero) throw new InvalidOperationException("OpenProcess(uint,IntPtr) returned zero");
@@ -210,6 +210,11 @@ namespace Minimem
 				{
 					// Restore stuff here
 				}
+			}
+
+			foreach (var (timestamp, allocationObject) in Allocator.Allocations)
+			{
+				allocationObject?.ReleaseMemory();
 			}
 
 			Reader = null;

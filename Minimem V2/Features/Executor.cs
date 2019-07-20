@@ -51,7 +51,7 @@ namespace Minimem.Features
 			int retFlagPosition = lstMnemonics.FindIndex(x => x.ToLower() == "<return>");
 			if (retFlagPosition != -1)
 			{
-				returnAllocation = _mainReference.Allocator.AllocateMemory((uint)Marshal.SizeOf(typeof(T)));
+				returnAllocation = _mainReference.Allocator.AllocateMemory((uint)Marshal.SizeOf<T>());
 				if (!returnAllocation.IsValid)
 				{
 					alloc.ReleaseMemory();
@@ -108,6 +108,7 @@ namespace Minimem.Features
 				}
 
 				Classes.WaitForSingleObjectResult result = (Classes.WaitForSingleObjectResult)Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)Classes.WaitForSingleObjectResult.INFINITE);
+				bool exitCodeResult = Win32.PInvoke.GetExitCodeThread(threadHandle, out uint lpExitCode);
 				Win32.PInvoke.CloseHandle(threadHandle);
 
 				return _mainReference.Reader.Read<T>(returnAllocation.BaseAddress);
@@ -115,6 +116,86 @@ namespace Minimem.Features
 			finally
 			{
 				returnAllocation?.ReleaseMemory();
+				alloc.ReleaseMemory();
+			}
+		}
+
+		public T ExecuteTest<T>(string[] mnemonics) where T : struct
+		{
+			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
+			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
+			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+			byte[] asm = _mainReference.Assembler.Assemble(mnemonics);
+
+#if x86
+			Classes.RemoteMemory alloc = _mainReference.Allocator.AllocateMemory((uint)asm.Length);
+#else
+			Classes.RemoteMemory alloc = _mainReference.Allocator.AllocateMemory((ulong)asm.Length);
+#endif
+			if (!alloc.IsValid) throw new InvalidOperationException("Failed allocating memory function body - Executor.Execute<T>(string[])");
+			_mainReference.Writer.WriteBytes(alloc.BaseAddress, asm);
+			try
+			{
+				IntPtr threadHandle = Win32.PInvoke.CreateRemoteThread(_mainReference.ProcessHandle, IntPtr.Zero, 0, alloc.BaseAddress, IntPtr.Zero, (uint)Classes.ThreadCreationFlags.Run, out IntPtr threadId);
+				if (threadHandle == IntPtr.Zero)
+				{
+					alloc.ReleaseMemory();
+					throw new InvalidOperationException("Failed using CreateRemoteThread - Executor.Execute<T>(string[])");
+				}
+
+				Classes.WaitForSingleObjectResult result = (Classes.WaitForSingleObjectResult)Win32.PInvoke.WaitForSingleObject(threadHandle, (uint)10000);
+				if (result == Classes.WaitForSingleObjectResult.WAIT_TIMEOUT)
+				{
+					Win32.PInvoke.CloseHandle(threadHandle);
+					alloc.ReleaseMemory();
+					throw new TimeoutException("Thread Timed Out (Exceeded 10 seconds)");
+				}
+
+				bool exitCodeResult = Win32.PInvoke.GetExitCodeThread(threadHandle, out uint lpExitCode);
+				Win32.PInvoke.CloseHandle(threadHandle);
+
+				
+				bool IsIntPtr = typeof(T) == typeof(IntPtr);
+				Type RealType = typeof(T);
+				TypeCode TypeCode = Type.GetTypeCode(RealType);
+				int Size = TypeCode == TypeCode.Boolean ? 1 : Marshal.SizeOf(RealType);
+
+#if x86
+				bool CanBeStoredInRegisters = IsIntPtr ||
+				                         TypeCode == TypeCode.Boolean ||
+				                         TypeCode == TypeCode.Byte ||
+				                         TypeCode == TypeCode.Char ||
+				                         TypeCode == TypeCode.Int16 ||
+				                         TypeCode == TypeCode.Int32 ||
+				                         TypeCode == TypeCode.Int64 ||
+				                         TypeCode == TypeCode.SByte ||
+				                         TypeCode == TypeCode.Single ||
+				                         TypeCode == TypeCode.UInt16 ||
+				                         TypeCode == TypeCode.UInt32;
+#else
+				bool CanBeStoredInRegisters = IsIntPtr ||
+				                         TypeCode == TypeCode.Int64 ||
+				                         TypeCode == TypeCode.UInt64 ||
+				                         TypeCode == TypeCode.Boolean ||
+				                         TypeCode == TypeCode.Byte ||
+				                         TypeCode == TypeCode.Char ||
+				                         TypeCode == TypeCode.Int16 ||
+				                         TypeCode == TypeCode.Int32 ||
+				                         TypeCode == TypeCode.Int64 ||
+				                         TypeCode == TypeCode.SByte ||
+				                         TypeCode == TypeCode.Single ||
+				                         TypeCode == TypeCode.UInt16 ||
+				                         TypeCode == TypeCode.UInt32;
+#endif
+
+				return !exitCodeResult
+					? default
+					: (HelperMethods.ByteArrayToStructure<T>(CanBeStoredInRegisters ? 
+						BitConverter.GetBytes(lpExitCode) : 
+						_mainReference.Reader.ReadBytes(new IntPtr(lpExitCode), new IntPtr(Size))));
+			}
+			finally
+			{
 				alloc.ReleaseMemory();
 			}
 		}
@@ -134,7 +215,7 @@ namespace Minimem.Features
 			List<Classes.RemoteMemory> parameterAllocations = new List<Classes.RemoteMemory>();
 			try
 			{
-				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, typeof(T),_mainReference.Is64Bit, out parameterAllocations);
+				mnemonics = HelperMethods.GenerateFunctionMnemonics(functionAddress, returnValue.BaseAddress, parameters.ToList(), callingConvention, _mainReference, typeof(T), _mainReference.Is64Bit, out parameterAllocations);
 			}
 			catch (Exception e)
 			{

@@ -54,12 +54,23 @@ namespace Minimem.Features
 			return Task.Run(() => ReadString(address, encoding, maxLength, zeroTerminated));
 		}
 
-		public byte[] ReadBytes(IntPtr address, IntPtr size)
+		public byte[] ReadBytes(IntPtr address, IntPtr size, Classes.MemoryProtection overrideProtectionType = Classes.MemoryProtection.DoNothing)
 		{
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
 			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
 			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
 			if (address == IntPtr.Zero || size == IntPtr.Zero) return null;
+
+			Classes.MemoryProtection oldProtect = Classes.MemoryProtection.Invalid;
+			if (overrideProtectionType != Classes.MemoryProtection.DoNothing && overrideProtectionType != Classes.MemoryProtection.Invalid)
+			{
+#if x86
+				bool success = Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, size, overrideProtectionType, out oldProtect);
+#else
+				bool success = Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, size, overrideProtectionType, out oldProtect);
+#endif
+			}
+
 #if x86
 			byte[] buffer = new byte[size.ToInt32()];
 			Win32.PInvoke.ReadProcessMemory(_mainReference.ProcessHandle, address, buffer, buffer.Length, out IntPtr numBytesRead);
@@ -67,6 +78,9 @@ namespace Minimem.Features
 			byte[] buffer = new byte[size.ToInt64()];
 			Win32.PInvoke.ReadProcessMemory(_mainReference.ProcessHandle, address, buffer, buffer.LongLength, out IntPtr numBytesRead);
 #endif
+
+			if (oldProtect != Classes.MemoryProtection.Invalid)
+				Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, new IntPtr(buffer.LongLength), oldProtect, out oldProtect);
 			return buffer;
 		}
 		public Task<byte[]> AsyncReadBytes(IntPtr address, IntPtr size)

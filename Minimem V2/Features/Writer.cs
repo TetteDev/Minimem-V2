@@ -32,18 +32,36 @@ namespace Minimem.Features
 			return Task.Run(() => Write<T>(address, obj));
 		}
 
-		public bool WriteBytes(IntPtr address, byte[] buffer)
+		public bool WriteBytes(IntPtr address, byte[] buffer, Classes.MemoryProtection overrideProtectionType = Classes.MemoryProtection.DoNothing)
 		{
 			if (address == IntPtr.Zero || buffer == null || buffer.Length < 1) return false;
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
 			if (_mainReference == null) throw new Exception("Reference to Main Class cannot be null");
 			if (!_mainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
+
+			Classes.MemoryProtection oldProtect = Classes.MemoryProtection.Invalid;
+			if (overrideProtectionType != Classes.MemoryProtection.DoNothing && overrideProtectionType != Classes.MemoryProtection.Invalid)
+			{
+#if x86
+				Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, new IntPtr(buffer.Length), overrideProtectionType, out oldProtect);
+#else
+				bool success = Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, new IntPtr(buffer.LongLength), overrideProtectionType, out oldProtect);
+#endif
+			}
 #if x86
 			Win32.PInvoke.WriteProcessMemory(_mainReference.ProcessHandle, address, buffer, buffer.Length, out IntPtr numBytesWritten);
 #else
 			Win32.PInvoke.WriteProcessMemory(_mainReference.ProcessHandle, address, buffer, buffer.LongLength, out IntPtr numBytesWritten);
 #endif
-			return true;
+
+			if (oldProtect != Classes.MemoryProtection.Invalid)
+				Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, new IntPtr(buffer.LongLength), oldProtect, out oldProtect);
+
+#if x86
+			return numBytesWritten.ToInt32() == buffer.Length;
+#else
+			return numBytesWritten.ToInt64() == buffer.LongLength;
+#endif
 		}
 		public Task<bool> AsyncWriteBytes(IntPtr address, byte[] buffer)
 		{

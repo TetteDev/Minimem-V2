@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using Minimem.Enumerations;
 
@@ -38,6 +37,7 @@ namespace Minimem.Extension_Methods
 				IntPtr threadHandle = Win32.PInvoke.OpenThread(Classes.ThreadAccess.SUSPEND_RESUME, false, (uint)processThread.Id);
 				if (threadHandle == IntPtr.Zero)
 					continue;
+				Win32.PInvoke.SuspendThread(threadHandle);
 				Win32.PInvoke.CloseHandle(threadHandle);
 			}
 
@@ -100,6 +100,7 @@ namespace Minimem.Extension_Methods
 			bool flag = Environment.Is64BitOperatingSystem && (Win32.PInvoke.IsWow64Process(Extensions._mainReference.ProcessHandle, out bool retVal) && !retVal);
 			return flag;
 		}
+
 	}
 
 	public static class ProcessModuleExtensions

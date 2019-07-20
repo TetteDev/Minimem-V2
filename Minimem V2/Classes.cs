@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace Minimem
 {
@@ -43,6 +45,9 @@ namespace Minimem
 					Size = IntPtr.Zero;
 					AllocationType = AllocationType.Invalid;
 					ProtectionType = MemoryProtection.Invalid;
+
+					_mainReference.Allocator.Allocations.RemoveAt(_mainReference.Allocator.Allocations.FindIndex(
+						alloc=> alloc.AllocationObject.BaseAddress == BaseAddress));
 					return true;
 				}
 				return false ;
@@ -53,6 +58,74 @@ namespace Minimem
 				AllocationType != AllocationType.Invalid &&
 				ProtectionType != MemoryProtection.Invalid;
 		}
+
+		public class MultiAobResultItem
+		{
+			public string Identifier = "NO_IDENTIFIER_PROVIDED";
+			public string Pattern = "";
+			public long FirstResultAsLong = 0;
+			public string FirstResultAsHexString = "";
+			public List<long> Results;
+		}
+
+		public class MultiAobItem // Used internally for method 'MultiAobScan'
+		{
+			public string OptionalIdentifier = "NO_IDENTIFIER_PROVIDED";
+
+			public string ArrayOfBytesString;
+			public byte[] Pattern;
+			public byte[] Mask;
+		}
+
+		public struct MemoryRegionResult
+		{
+			public UIntPtr CurrentBaseAddress { get; set; }
+			public long RegionSize { get; set; }
+			public UIntPtr RegionBase { get; set; }
+
+		}
+
+		public struct SYSTEM_INFO
+		{
+			public ushort processorArchitecture;
+			ushort reserved;
+			public uint pageSize;
+			public UIntPtr minimumApplicationAddress;
+			public UIntPtr maximumApplicationAddress;
+			public IntPtr activeProcessorMask;
+			public uint numberOfProcessors;
+			public uint processorType;
+			public uint allocationGranularity;
+			public ushort processorLevel;
+			public ushort processorRevision;
+		}
+
+		public struct MEMORY_BASIC_INFORMATION32
+		{
+			public UIntPtr BaseAddress;
+			public UIntPtr AllocationBase;
+			public uint AllocationProtect;
+			public uint RegionSize;
+			public uint State;
+			public uint Protect;
+			public uint Type;
+		}
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct MEMORY_BASIC_INFORMATION64
+		{
+			public ulong BaseAddress;
+			public ulong AllocationBase;
+			public int AllocationProtect;
+			public int __alignment1;
+			public ulong RegionSize;
+			public int State;
+			public int Protect;
+			public int Type;
+			public int __alignment2;
+		}
+
+		public const uint TWO_GIGABYTES = 2147483648;
 
 		[Flags]
 		public enum AllocationType
@@ -73,6 +146,7 @@ namespace Minimem
 		public enum MemoryProtection
 		{
 			Invalid = 0x9999,
+			DoNothing = 0x9998,
 			Execute = 0x10,
 			ExecuteRead = 0x20,
 			ExecuteReadWrite = 0x40,
@@ -117,6 +191,12 @@ namespace Minimem
 			DIRECT_IMPERSONATION = (0x0200),
 			THREAD_HIJACK = SUSPEND_RESUME | GET_CONTEXT | SET_CONTEXT,
 			THREAD_ALL = TERMINATE | SUSPEND_RESUME | GET_CONTEXT | SET_CONTEXT | SET_INFORMATION | QUERY_INFORMATION | SET_THREAD_TOKEN | IMPERSONATE | DIRECT_IMPERSONATION
+		}
+
+		public enum DetourType
+		{
+			PUSH_RET = 1,
+			JMP = 2,
 		}
 
 		public enum CallingConventionsEnum
