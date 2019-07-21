@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Text;
+using System.Web;
 
 namespace Minimem.Features
 {
@@ -28,9 +32,9 @@ namespace Minimem.Features
 			{
 				List<string> mnemonicsList = mnemonics.ToList();
 				if (mnemonicsList[0].ToLower() == "use32" || mnemonicsList[0].ToLower() == "use64")
-					mnemonicsList.Insert(1, $"org 0x{rebaseOrigin:X}");
+					mnemonicsList.Insert(1, $"org 0x{rebaseOrigin:X8}");
 				else
-					mnemonicsList.Insert(0, $"org 0x{rebaseOrigin:X}");
+					mnemonicsList.Insert(0, $"org 0x{rebaseOrigin:X8}");
 
 				byte[] bytes_rebased = asm.Assemble(mnemonicsList);
 				asm.Dispose();
@@ -41,5 +45,7 @@ namespace Minimem.Features
 			asm.Dispose();
 			return bytes;
 		}
+
+		
 	}
 }

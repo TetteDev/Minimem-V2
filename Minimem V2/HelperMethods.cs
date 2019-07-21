@@ -115,7 +115,7 @@ namespace Minimem
 			return array;
 		}
 		[Obsolete("If the X64 calling convention is specified, and the 32bit memory dll is used, errors will come")]
-		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, IntPtr returnValueAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, Type funcReturnType,bool Process64Bit,out List<Classes.RemoteMemory> paramAllocations)
+		public static List<string> GenerateFunctionMnemonics(IntPtr functionAddress, List<dynamic> parameters, Classes.CallingConventionsEnum callingConvention, Main mainRef, Type funcReturnType,bool Process64Bit,out List<Classes.RemoteMemory> paramAllocations)
 		{
 			// Only 32bit atm
 			List<string> mnemonics = new List<string>();
@@ -145,7 +145,7 @@ namespace Minimem
 				case Classes.CallingConventionsEnum.Cdecl:
 					parameterAllocations.Reverse();
 					foreach (var param in parameterAllocations)
-						mnemonics.Add($"push {param.BaseAddress}");
+						mnemonics.Add($"push dword [{param.BaseAddress}]");
 
 					mnemonics.Add($"call {functionAddress}");
 					mnemonics.Add($"add esp, {parameterAllocations.Count * 4}");

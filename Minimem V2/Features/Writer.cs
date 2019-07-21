@@ -63,9 +63,9 @@ namespace Minimem.Features
 			return numBytesWritten.ToInt64() == buffer.LongLength;
 #endif
 		}
-		public Task<bool> AsyncWriteBytes(IntPtr address, byte[] buffer)
+		public Task<bool> AsyncWriteBytes(IntPtr address, byte[] buffer, Classes.MemoryProtection overrideProtectionType = Classes.MemoryProtection.DoNothing)
 		{
-			return Task.Run(() => WriteBytes(address, buffer));
+			return Task.Run(() => WriteBytes(address, buffer, overrideProtectionType));
 		}
 
 		public bool WriteString(IntPtr address, string value, Encoding encoding)

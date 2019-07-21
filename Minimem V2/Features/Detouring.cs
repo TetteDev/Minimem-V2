@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Policy;
+using System.Runtime.InteropServices;
 
 namespace Minimem.Features
 {
@@ -148,6 +148,225 @@ namespace Minimem.Features
 
 			return codecave.BaseAddress;
 		}
-		
+
+		public Classes.DetourCallback GenerateDetour(IntPtr address, int targetBytesCount, string[] mnemonics, bool saveOriginalBytes = true, bool putOriginalBytesAfterMnemonics = true)
+		{
+			int bytesNeeded = _mainReference.Is64Bit ? 16 : 5;
+			if (targetBytesCount < bytesNeeded) throw new InvalidOperationException($"{(_mainReference.Is64Bit ? "A 64Bit Process need atleast 16 bytes of headroom" : "A 32Bit Process need atleast 5 bytes of headroom")}");
+
+			byte[] originalBytes = _mainReference.Reader.ReadBytes(address, new IntPtr(targetBytesCount), Classes.MemoryProtection.ExecuteReadWrite);
+			//int codecaveallocationSize = _mainReference.Assembler.Assemble(new[] { _mainReference.Is64Bit ? "use64" : "use32"}.Concat(mnemonics).ToArray()).Length + originalBytes.Length + 16 /* + SizeOf Register Struct */;
+			Classes.RemoteMemory caveAllocation = _mainReference.Allocator.AllocateMemory(0x10000);
+			if (!caveAllocation.IsValid) throw new InvalidOperationException($"Failed allocating {0x10000} bytes for the code cave");
+
+			int nopsNeeded = targetBytesCount - bytesNeeded;
+			List<string> jumpInMnemonics = _mainReference.Is64Bit
+				? new List<string>()
+				{
+					"use64",
+					"push rax",
+					$"mov rax, 0x{caveAllocation.BaseAddress.ToInt64():X}",
+					"xchg rax, [rsp]",
+					"ret"
+				}
+				: new List<string>()
+				{
+					"use32",
+					$"jmp 0x{((uint)caveAllocation.BaseAddress - (uint)address):X}"
+				};
+
+			for (int iNop = 0; iNop < nopsNeeded; iNop++)
+				jumpInMnemonics.Add("nop");
+
+			List<string> codeCaveMnemonics = _mainReference.Is64Bit
+				? new List<string>()
+				{
+					"use64",
+					"<mnemonics>",
+				}
+				: new List<string>()
+				{
+					"use32",
+					"<mnemonics>",
+				};
+
+			codeCaveMnemonics.InsertRange(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"), mnemonics);
+			codeCaveMnemonics.RemoveAt(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"));
+
+			List<string> jumpOutMnemonics = _mainReference.Is64Bit
+				? new List<string>()
+				{
+					"use64",
+					"<registers>",
+					"<hitcounter>",
+					"push rax",
+					$"mov rax, 0x{((ulong)address + (ulong)bytesNeeded + (ulong)nopsNeeded):X}",
+					"xchg rax, [rsp]",
+					//"pop rax",
+					"ret"
+				}
+				: new List<string>()
+				{
+					"use32",
+					//$"jmp 0x{((uint)address + (nopsNeeded + 5) - (uint)caveAllocation.BaseAddress + codecaveallocationSize + bytesNeeded):X}"
+					"<registers>",
+					"<hitcounter>",
+					$"push 0x{((uint)address + bytesNeeded + nopsNeeded):X}",
+					"ret"
+				};
+
+
+#if x86
+			Classes.RemoteMemory registerStructurePointer = _mainReference.Allocator.AllocateMemory((uint) Marshal.SizeOf<Classes.Registers32>());
+#else
+			Classes.RemoteMemory registerStructurePointer = _mainReference.Allocator.AllocateMemory((ulong)Marshal.SizeOf<Classes.Registers64>());
+#endif
+			if (!registerStructurePointer.IsValid)
+				throw new Exception("registerStructurePointer ptr is null");
+
+#if x86
+			Classes.RemoteMemory hitCounterPointer = _mainReference.Allocator.AllocateMemory(4);
+#else
+			Classes.RemoteMemory hitCounterPointer = _mainReference.Allocator.AllocateMemory(8);
+#endif
+			if (!hitCounterPointer.IsValid) throw new Exception("hitcounter ptr is null");
+
+			if (_mainReference.Is64Bit)
+			{
+				jumpOutMnemonics.InsertRange(jumpOutMnemonics.FindIndex(x => x == "<registers>"), new List<string>()
+				{
+					/*
+					$"movsxd [dword {registerStructurePointer.BaseAddress}],eax",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 4}],ebx",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 8}],ecx",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 12}],edx",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 16}],edi",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 20}],esi",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 24}],ebp",
+					$"movsxd [dword {registerStructurePointer.BaseAddress + 28}],esp",
+					*/
+
+					$"mov [qword {registerStructurePointer.BaseAddress + 36}],rax",
+					"nop",
+					
+					// Moving rbx into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 44",
+					"mov [rax], rbx",
+					"pop rax",
+					"nop",
+
+					// Moving rcx into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 52",
+					"mov [rax], rcx",
+					"pop rax",
+					"nop",
+
+					// Moving rdx into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 60",
+					"mov [rax], rdx",
+					"pop rax",
+					"nop",
+
+					// Moving rdi into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 68",
+					"mov [rax], rdi",
+					"pop rax",
+					"nop",
+
+					// Moving rsi into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 76",
+					"mov [rax], rsi",
+					"pop rax",
+
+					// Moving rbp into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 84",
+					"mov [rax], rbp",
+					"pop rax",
+					"nop",
+
+					// Moving rsp into imm64
+					"push rax",
+					$"mov rax, {registerStructurePointer.BaseAddress}",
+					"add rax, 92",
+					"mov [rax], rsp",
+					"pop rax",
+					"nop"
+
+					//$"mov [qword {registerStructurePointer.BaseAddress + 44}],rbx",
+					//$"mov [qword {registerStructurePointer.BaseAddress + 52}],rcx",
+					//$"mov [qword {registerStructurePointer.BaseAddress + 60}],rdx",
+					//$"mov [qword {registerStructurePointer.BaseAddress + 68}],rdi",
+					//$"mov [qword {registerStructurePointer.BaseAddress + 76}],rsi",
+					//$"mov [qword {registerStructurePointer.BaseAddress + 84}],rbp",
+					//$"mov [qword {registerStructurePointer.BaseAddress + 92}],rsp"
+				});
+			}
+			else
+			{
+				jumpOutMnemonics.InsertRange(jumpOutMnemonics.FindIndex(x => x == "<registers>"), new List<string>()
+				{
+					$"mov [{registerStructurePointer.BaseAddress}],eax",
+					$"mov [{registerStructurePointer.BaseAddress + 4}],ebx",
+					$"mov [{registerStructurePointer.BaseAddress + 8}],ecx",
+					$"mov [{registerStructurePointer.BaseAddress + 12}],edx",
+					$"mov [{registerStructurePointer.BaseAddress + 16}],edi",
+					$"mov [{registerStructurePointer.BaseAddress + 20}],esi",
+					$"mov [{registerStructurePointer.BaseAddress + 24}],ebp",
+					$"mov [{registerStructurePointer.BaseAddress + 28}],esp",
+
+					$"mov [{registerStructurePointer.BaseAddress + 30}],cs",
+					$"mov [{registerStructurePointer.BaseAddress + 32}],ss",
+					$"mov [{registerStructurePointer.BaseAddress + 34}],ds",
+					$"mov [{registerStructurePointer.BaseAddress + 36}],es",
+					$"mov [{registerStructurePointer.BaseAddress + 38}],fs",
+					$"mov [{registerStructurePointer.BaseAddress + 40}],gs",
+				});
+			}
+			jumpOutMnemonics.RemoveAt(jumpOutMnemonics.FindIndex(x => x == "<registers>"));
+			if (_mainReference.Is64Bit)
+			{
+				jumpOutMnemonics.InsertRange(jumpOutMnemonics.FindIndex(x => x == "<hitcounter>"), new string[]
+				{
+					"push rax",
+					//$"lea rax, [{hitCounterPointer.BaseAddress}]",
+					$"mov rax, [qword {hitCounterPointer.BaseAddress}]",
+					"inc qword [rax]",
+					"pop rax", // restore original value of rax
+					$"mov [qword {hitCounterPointer.BaseAddress}],rax"
+				});
+				jumpOutMnemonics.RemoveAt(jumpOutMnemonics.FindIndex(x => x == "<hitcounter>"));
+			}
+			else
+			{
+				jumpOutMnemonics[jumpOutMnemonics.FindIndex(x => x == "<hitcounter>")] = $"inc dword [{hitCounterPointer.BaseAddress}]";
+			}
+
+			byte[] jumpInBytes = _mainReference.Assembler.Assemble(jumpInMnemonics.ToArray());
+			byte[] CodeCaveBytes = _mainReference.Assembler.Assemble(codeCaveMnemonics.ToArray());
+			byte[] jumpOutBytes = _mainReference.Assembler.Assemble(jumpOutMnemonics.ToArray());
+
+			return new Classes.DetourCallback(address, 
+				caveAllocation.BaseAddress, 
+				targetBytesCount, 
+				originalBytes, 
+				jumpInBytes, 
+				jumpOutBytes,
+				CodeCaveBytes, 
+				saveOriginalBytes, 
+				putOriginalBytesAfterMnemonics,
+				_mainReference);
+		}
 	}
 }

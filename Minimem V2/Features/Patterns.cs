@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Minimem.Extension_Methods;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using Minimem.Extension_Methods;
 
 namespace Minimem.Features
 {
@@ -286,7 +286,7 @@ namespace Minimem.Features
 
 			foreach (var aob in byteArrays)
 			{
-				var tmpSplitPattern = aob[0].Split(' ');
+				var tmpSplitPattern = aob[0].TrimStart(' ').TrimEnd(' ').Split(' ');
 
 				var tmpPattern = new byte[tmpSplitPattern.Length];
 				var tmpMask = new byte[tmpSplitPattern.Length];
@@ -443,12 +443,11 @@ namespace Minimem.Features
 			{
 				Identifier = itm1.Item1.OptionalIdentifier,
 				Pattern = itm1.Item1.ArrayOfBytesString,
-				Results = itm1.Item2.OrderBy(c => c).ToList(),
-				FirstResultAsLong = itm1.Item2.OrderBy(c => c).ToList().FirstOrDefault() == 0 ? 0 : itm1.Item2.OrderBy(c => c).ToList().FirstOrDefault(),
+				Results = itm1.Item2.OrderBy(c=> c).ToList(),
+				FirstResult = itm1.Item2.OrderBy(c => c).ToList().FirstOrDefault() == 0L ? IntPtr.Zero : new IntPtr(itm1.Item2.OrderBy(c => c).ToList().FirstOrDefault()),
 				FirstResultAsHexString = itm1.Item2.OrderBy(c => c).ToList().FirstOrDefault() == 0 ? "0x0" : $"0x{itm1.Item2.OrderBy(c => c).ToList().FirstOrDefault():X8}"
 			}).ToList();
 		}
-
 		public Task<List<Classes.MultiAobResultItem>> AsyncCEFindPattern(string[][] byteArrays, bool readable = true, bool writable = false, bool executable = true, long start = 0, long end = long.MaxValue)
 		{
 			return Task.Run(() => CEFindPattern(byteArrays, readable, writable, executable, start, end));

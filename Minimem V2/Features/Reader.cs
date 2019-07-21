@@ -83,9 +83,9 @@ namespace Minimem.Features
 				Win32.PInvoke.VirtualProtectEx(_mainReference.ProcessHandle, address, new IntPtr(buffer.LongLength), oldProtect, out oldProtect);
 			return buffer;
 		}
-		public Task<byte[]> AsyncReadBytes(IntPtr address, IntPtr size)
+		public Task<byte[]> AsyncReadBytes(IntPtr address, IntPtr size, Classes.MemoryProtection overrideProtectionType = Classes.MemoryProtection.DoNothing)
 		{
-			return Task.Run(() => ReadBytes(address, size));
+			return Task.Run(() => ReadBytes(address, size, overrideProtectionType));
 		}
 
 		public T[] ReadArray<T>(IntPtr address, IntPtr count) where T : struct
