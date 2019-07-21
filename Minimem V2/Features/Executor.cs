@@ -228,7 +228,6 @@ namespace Minimem.Features
 
 			byte[] asm = _mainReference.Assembler.Assemble(mnemonics.ToArray(), alloc.BaseAddress.ToInt32());
 			
-
 			_mainReference.Writer.WriteBytes(alloc.BaseAddress, asm);
 
 			IntPtr threadHandle = Win32.PInvoke.CreateRemoteThread(_mainReference.ProcessHandle, IntPtr.Zero, 0, alloc.BaseAddress, IntPtr.Zero, (uint)Classes.ThreadCreationFlags.Run, out IntPtr threadId);
@@ -242,7 +241,7 @@ namespace Minimem.Features
 			}
 
 			Classes.WaitForSingleObjectResult result = (Classes.WaitForSingleObjectResult)Win32.PInvoke.WaitForSingleObject(threadHandle, 3000);
-			if (result == Classes.WaitForSingleObjectResult.WAIT_TIMEOUT)
+			if (result == Classes.WaitForSingleObjectResult.WAIT_TIMEOUT || result == Classes.WaitForSingleObjectResult.WAIT_ABANDONED /* || result == WAIT_FAILED */)
 			{
 				foreach (var parameteralloc in parameterAllocations)
 					parameteralloc.ReleaseMemory();
@@ -268,16 +267,16 @@ namespace Minimem.Features
 
 #if x86
 				bool CanBeStoredInRegisters = IsIntPtr ||
-				                         TypeCode == TypeCode.Boolean ||
-				                         TypeCode == TypeCode.Byte ||
-				                         TypeCode == TypeCode.Char ||
-				                         TypeCode == TypeCode.Int16 ||
-				                         TypeCode == TypeCode.Int32 ||
-				                         TypeCode == TypeCode.Int64 ||
-				                         TypeCode == TypeCode.SByte ||
-				                         TypeCode == TypeCode.Single ||
-				                         TypeCode == TypeCode.UInt16 ||
-				                         TypeCode == TypeCode.UInt32;
+					                          TypeCode == TypeCode.Boolean ||
+					                          TypeCode == TypeCode.Byte ||
+					                          TypeCode == TypeCode.Char ||
+					                          TypeCode == TypeCode.Int16 ||
+					                          TypeCode == TypeCode.Int32 ||
+					                          TypeCode == TypeCode.Int64 ||
+					                          TypeCode == TypeCode.SByte ||
+					                          TypeCode == TypeCode.Single ||
+					                          TypeCode == TypeCode.UInt16 ||
+					                          TypeCode == TypeCode.UInt32;
 #else
 				bool CanBeStoredInRegisters = IsIntPtr ||
 				                              TypeCode == TypeCode.Int64 ||
@@ -294,6 +293,8 @@ namespace Minimem.Features
 				                              TypeCode == TypeCode.UInt32;
 #endif
 
+
+				return !exitCodeResult ? default : HelperMethods.ByteArrayToStructure<T>(BitConverter.GetBytes(lpExitCode));
 				return !exitCodeResult
 					? default
 					: (HelperMethods.ByteArrayToStructure<T>(CanBeStoredInRegisters ? BitConverter.GetBytes(lpExitCode) : _mainReference.Reader.ReadBytes(new IntPtr(lpExitCode), new IntPtr(Size))));

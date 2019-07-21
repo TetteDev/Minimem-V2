@@ -42,7 +42,7 @@ namespace Minimem
 			Marshal.FreeHGlobal(buffer);
 		}
 
-		private static unsafe int FindPattern(byte* body, int bodyLength, byte[] pattern, byte[] masks, int start = 0)
+		public static unsafe int FindPattern(byte* body, int bodyLength, byte[] pattern, byte[] masks, int start = 0)
 		{
 			int foundIndex = -1;
 
@@ -161,20 +161,20 @@ namespace Minimem
 				case Classes.CallingConventionsEnum.FastCall:
 					if (parameterAllocations.Count > 0)
 					{
-						mnemonics.Add($"mov ecx, {parameterAllocations[offset].BaseAddress}");
+						mnemonics.Add($"mov ecx, [{parameterAllocations[offset].BaseAddress}]");
 						offset++;
 					}
 
 					if (parameterAllocations.Count - offset > 0)	
 					{
-						mnemonics.Add($"mov edx, {parameterAllocations[offset].BaseAddress}");
+						mnemonics.Add($"mov edx, [{parameterAllocations[offset].BaseAddress}]");
 						offset++;
 					}
 
 					parameterAllocations = parameterAllocations.Skip(offset).ToList();
 					parameterAllocations.Reverse();
 					foreach (var param in parameterAllocations)
-						mnemonics.Add($"push {param.BaseAddress}");
+						mnemonics.Add($"push [{param.BaseAddress}]");
 
 					mnemonics.Add($"call {functionAddress.ToInt32()}");
 					break;
@@ -195,31 +195,31 @@ namespace Minimem
 				case Classes.CallingConventionsEnum.x64Convention:
 					if (parameterAllocations.Count > 0)
 					{
-						mnemonics.Add($"mov rcx, {parameterAllocations[offset].BaseAddress}");
+						mnemonics.Add($"mov rcx, [{parameterAllocations[offset].BaseAddress}]");
 						offset++;
 					}
 
 					if (parameterAllocations.Count - offset > 0)
 					{
-						mnemonics.Add($"mov rdx, {parameterAllocations[offset].BaseAddress}");
+						mnemonics.Add($"mov rdx, [{parameterAllocations[offset].BaseAddress}]");
 						offset++;
 					}
 
 					if (parameterAllocations.Count - offset > 0)
 					{
-						mnemonics.Add($"mov r8, {parameterAllocations[offset].BaseAddress}");
+						mnemonics.Add($"mov r8, [{parameterAllocations[offset].BaseAddress}]");
 						offset++;
 					}
 
 					if (parameterAllocations.Count - offset > 0)
 					{
-						mnemonics.Add($"mov r9, {parameterAllocations[offset].BaseAddress}");
+						mnemonics.Add($"mov r9, [{parameterAllocations[offset].BaseAddress}]");
 						offset++;
 					}
 
 					parameterAllocations = parameterAllocations.Skip(offset).ToList();
 					foreach (var param in parameterAllocations)
-						mnemonics.Add($"push {param.BaseAddress}");
+						mnemonics.Add($"push [{param.BaseAddress}]");
 					mnemonics.Add($"call {functionAddress.ToInt64()}");
 
 					break;
@@ -227,7 +227,7 @@ namespace Minimem
 					throw new InvalidOperationException("Deal with this");
 			}
 			paramAllocations = parameterAllocationsReturn;
-			mnemonics.Insert(0, (callingConvention != Classes.CallingConventionsEnum.x64Convention ? $"use32" : "use64"));
+			mnemonics.Insert(0, (callingConvention != Classes.CallingConventionsEnum.x64Convention ? "use32" : "use64"));
 			mnemonics.Add((callingConvention == Classes.CallingConventionsEnum.x64Convention ? "ret" : "retn"));
 			return mnemonics;
 		} }
