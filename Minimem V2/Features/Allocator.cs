@@ -14,9 +14,9 @@ namespace Minimem.Features
 		}
 
 #if x86
-		public RemoteMemory AllocateMemory(uint size, AllocationType allocationType = AllocationType.Commit | AllocationType.Reserve, MemoryProtection protectionType = MemoryProtection.ExecuteReadWrite)
+		public RemoteMemory AllocateMemory(uint size, bool allocationWillBeFreedManually = true, AllocationType allocationType = AllocationType.Commit | AllocationType.Reserve, MemoryProtection protectionType = MemoryProtection.ExecuteReadWrite)
 #else
-		public RemoteMemory AllocateMemory(ulong size, AllocationType allocationType = AllocationType.Commit | AllocationType.Reserve, MemoryProtection protectionType = MemoryProtection.ExecuteReadWrite)
+		public RemoteMemory AllocateMemory(ulong size, bool allocationWillBeFreedManually = false, AllocationType allocationType = AllocationType.Commit | AllocationType.Reserve, MemoryProtection protectionType = MemoryProtection.ExecuteReadWrite)
 #endif
 		{
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
@@ -27,7 +27,8 @@ namespace Minimem.Features
 			if (baseAddress != IntPtr.Zero)
 			{
 				RemoteMemory alloc = new RemoteMemory(baseAddress, (IntPtr)size, allocationType, protectionType, _mainReference);
-				Allocations.Add((Tmestamp: DateTime.Now, AllocationObject: alloc));
+				if (!allocationWillBeFreedManually)
+					Allocations.Add((Tmestamp: DateTime.Now, AllocationObject: alloc));
 				return alloc;
 			}
 			return new RemoteMemory(IntPtr.Zero, (IntPtr)0, AllocationType.Invalid, MemoryProtection.Invalid, null);

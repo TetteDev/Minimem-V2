@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Linq;
@@ -14,7 +15,8 @@ namespace Minimem
 		private Process _process = null;
 
 		private bool _threadExitFlag = false;
-		public Thread CallbackThread { get; private set; }
+		public Thread CallbackThread { get; set; }
+		public List<Classes.DetourCallback> DetourCallbacks = new List<Classes.DetourCallback>();
 
 		public Process ProcessObject
 		{
@@ -93,7 +95,7 @@ namespace Minimem
 		public Features.Patterns Patterns { get; private set; }
 		public Features.Executor Executor { get; private set; }
 
-		public Main(string processName, bool sloppySearch = false)
+		public Main(string processName, bool sloppySearch = false, bool startCallbackLoopAutomatically = true)
 		{
 			if (string.IsNullOrEmpty(processName)) throw new InvalidOperationException($"Parameter \"processName\" for constructor of Minimem.Main cannot be empty!");
 			int processId = HelperMethods.TranslateProcessNameIntoProcessId(processName, sloppySearch);
@@ -117,15 +119,17 @@ namespace Minimem
 			Executor = new Features.Executor(this);
 			Extensions._mainReference = this;
 
-			/*CallbackThread = new Thread(CallbackLoop)
+			if (startCallbackLoopAutomatically)
 			{
-				IsBackground = true
-			};
-			CallbackThread.Start();
-			*/
+				CallbackThread = new Thread(CallbackLoop)
+				{
+					IsBackground = true
+				};
+				CallbackThread.Start();
+			}
 		}
-
-		public Main(int processId)
+		
+		public Main(int processId, bool startCallbackLoopAutomatically = true)
 		{
 			if (processId < 0) throw new InvalidOperationException($"Parameter \"processId\" for constructor of Minimem.Main cannot be less or equal to zero!");
 			IntPtr handle = Win32.PInvoke.OpenProcess(Enumerations.ProcessAccessFlags.Enumeration.All, false, processId);
@@ -147,13 +151,14 @@ namespace Minimem
 			Executor = new Features.Executor(this);
 			Extensions._mainReference = this;
 
-			/*
-			CallbackThread = new Thread(CallbackLoop)
+			if (startCallbackLoopAutomatically)
 			{
-				IsBackground = true
-			};
-			CallbackThread.Start();
-			*/
+				CallbackThread = new Thread(CallbackLoop)
+				{
+					IsBackground = true
+				};
+				CallbackThread.Start();
+			}
 		}
 
 		public void Detach(bool clearCallbacks = true)
@@ -185,7 +190,13 @@ namespace Minimem
 
 				if (clearCallbacks)
 				{
-					// Restore stuff here
+					for (int i = DetourCallbacks.Count - 1; i >= 0; i--)
+					{
+						if (DetourCallbacks[i].IsEnabled && !DetourCallbacks[i].IsDisposed)
+							DetourCallbacks[i].Dispose();
+
+						DetourCallbacks.Remove(DetourCallbacks[i]);
+					}
 				}
 			} else
 			{
@@ -208,7 +219,13 @@ namespace Minimem
 
 				if (clearCallbacks)
 				{
-					// Restore stuff here
+					for (int i = DetourCallbacks.Count - 1; i >= 0; i--)
+					{
+						if (DetourCallbacks[i].IsEnabled && !DetourCallbacks[i].IsDisposed)
+							DetourCallbacks[i].Dispose();
+
+						DetourCallbacks.Remove(DetourCallbacks[i]);
+					}
 				}
 			}
 
@@ -234,7 +251,37 @@ namespace Minimem
 			Debug.WriteLine("CallbackThread been started");
 			while (!_threadExitFlag)
 			{
-				// Loop here
+				for (int i = DetourCallbacks.Count - 1; i >= 0; i--)
+				{
+					if (_threadExitFlag)
+						break;
+
+					Classes.DetourCallback cObj = DetourCallbacks[i];
+					if (cObj.IsDisposed)
+					{
+						try
+						{
+							DetourCallbacks.Remove(cObj);
+						}
+						catch
+						{
+							Console.WriteLine("Failed removing disposed object from list 'DetourCallbacks'");
+						}
+						continue;
+					}
+
+					if (!cObj.IsEnabled) continue;
+					if (cObj.RaiseEvent == null) continue;
+					if (cObj.HitCounter.BaseAddress == IntPtr.Zero) continue;
+
+					if (ProcessHandle == IntPtr.Zero) continue;
+					uint r = Reader.Read<uint>(cObj.HitCounter.BaseAddress);
+					if (r != cObj.lastValue)
+					{
+						cObj.lastValue = r;
+						cObj.RaiseEvent?.Invoke(cObj);
+					}
+				}
 
 				Thread.Sleep(100);
 			}

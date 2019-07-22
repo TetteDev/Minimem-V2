@@ -48,8 +48,16 @@ namespace Minimem
 					AllocationType = AllocationType.Invalid;
 					ProtectionType = MemoryProtection.Invalid;
 
-					_mainReference.Allocator.Allocations.RemoveAt(_mainReference.Allocator.Allocations.FindIndex(
-						alloc=> alloc.AllocationObject.BaseAddress == BaseAddress));
+					try
+					{
+						_mainReference.Allocator.Allocations.RemoveAt(_mainReference.Allocator.Allocations.FindIndex(
+							alloc => alloc.AllocationObject.BaseAddress == BaseAddress));
+					}
+					catch
+					{
+						// swallow exception
+					}
+					
 					return true;
 				}
 				return false ;
@@ -135,9 +143,13 @@ namespace Minimem
 			public UIntPtr RegionBase { get; set; }
 		}
 
+
+		public delegate void InterceptHookExecuteDelegate(object InterceptHookObject);
+
 		public class DetourCallback
 		{
 			public bool IsEnabled { get; private set; }
+			public bool IsDisposed { get; private set; } = false;
 			private readonly Main MainReference;
 
 			public readonly IntPtr DetourStartAddress;
@@ -148,12 +160,20 @@ namespace Minimem
 			public readonly int OriginalByteOverwriteCount;
 
 			public readonly IntPtr CodeCaveAddress;
+			public RemoteMemory CodeCaveAllocationObject;
+
+			public RemoteMemory HitCounter;
+			public RemoteMemory RegisterStructs = null;
 			public byte[] CodeCaveBytes;
+
+			public InterceptHookExecuteDelegate RaiseEvent = null;
+
+			public uint lastValue = 0;
 
 			private readonly byte[] JumpInBytes;
 			private readonly byte[] JumpOutBytes;
 
-			public DetourCallback(IntPtr _startAddress, IntPtr _codeCaveAddress, int _overwriteByteCount, byte[] _overwrittenOriginalBytes, byte[] _jumpInBytes,byte[] _jumpOutBytes, byte[] _codeCaveBytes,bool _saveOriginalBytes, bool _putOriginalBytesAfterMnemonics , Main _mainReference)
+			public DetourCallback(IntPtr _startAddress, IntPtr _codeCaveAddress, int _overwriteByteCount, byte[] _overwrittenOriginalBytes, byte[] _jumpInBytes,byte[] _jumpOutBytes, byte[] _codeCaveBytes,bool _saveOriginalBytes, bool _putOriginalBytesAfterMnemonics, Classes.RemoteMemory _allocationObject, Classes.RemoteMemory _hitCounter, Classes.RemoteMemory _registerStructs, InterceptHookExecuteDelegate _RaiseEvent, Main _mainReference)
 			{
 				DetourStartAddress = _startAddress;
 				CodeCaveAddress = _codeCaveAddress;
@@ -163,6 +183,10 @@ namespace Minimem
 				PutOriginalBytesAfterMnemonics = _putOriginalBytesAfterMnemonics;
 				JumpInBytes = _jumpInBytes;
 				CodeCaveBytes = _codeCaveBytes;
+				CodeCaveAllocationObject = _allocationObject;
+				HitCounter = _hitCounter;
+				RegisterStructs = _registerStructs;
+				RaiseEvent = _RaiseEvent;
 				JumpOutBytes = _jumpOutBytes;
 				MainReference = _mainReference;
 			}
@@ -208,10 +232,19 @@ namespace Minimem
 					if (!MainReference.IsValid) throw new Exception("Reference to Main Class reported an Invalid State");
 
 					MainReference.Writer.WriteBytes(DetourStartAddress, OriginalBytes, MemoryProtection.ExecuteReadWrite);
-					// Free codecave allocation
-
 					IsEnabled = false;
 				}
+			}
+
+			public void Dispose()
+			{
+				if (IsEnabled) 
+					Disable();
+
+				RegisterStructs?.ReleaseMemory();
+				HitCounter?.ReleaseMemory();
+				CodeCaveAllocationObject?.ReleaseMemory();
+				IsDisposed = true;
 			}
 		}
 

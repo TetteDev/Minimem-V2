@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Minimem.Features
 {
@@ -149,8 +150,17 @@ namespace Minimem.Features
 			return codecave.BaseAddress;
 		}
 
-		public Classes.DetourCallback GenerateDetour(IntPtr address, int targetBytesCount, string[] mnemonics, bool saveOriginalBytes = true, bool putOriginalBytesAfterMnemonics = true)
+		public Classes.DetourCallback GenerateDetour(IntPtr address, int targetBytesCount, string[] mnemonics, Classes.InterceptHookExecuteDelegate executedEvent = null, bool saveOriginalBytes = true, bool putOriginalBytesAfterMnemonics = true)
 		{
+			if (_mainReference.CallbackThread == null)
+			{
+				_mainReference.CallbackThread = new Thread(_mainReference.CallbackLoop)
+				{
+					IsBackground = true
+				};
+				_mainReference.CallbackThread.Start();
+			}
+
 			int bytesNeeded = _mainReference.Is64Bit ? 16 : 5;
 			if (targetBytesCount < bytesNeeded) throw new InvalidOperationException($"{(_mainReference.Is64Bit ? "A 64Bit Process need atleast 16 bytes of headroom" : "A 32Bit Process need atleast 5 bytes of headroom")}");
 
@@ -190,8 +200,16 @@ namespace Minimem.Features
 					"<mnemonics>",
 				};
 
-			codeCaveMnemonics.InsertRange(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"), mnemonics);
-			codeCaveMnemonics.RemoveAt(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"));
+			if (mnemonics.Length > 1)
+			{
+				codeCaveMnemonics.InsertRange(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"), mnemonics);
+				codeCaveMnemonics.RemoveAt(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"));
+			}
+			else
+			{
+				codeCaveMnemonics.RemoveAt(codeCaveMnemonics.FindIndex(x => x == "<mnemonics>"));
+			}
+			
 
 			List<string> jumpOutMnemonics = _mainReference.Is64Bit
 				? new List<string>()
@@ -363,9 +381,13 @@ namespace Minimem.Features
 				originalBytes, 
 				jumpInBytes, 
 				jumpOutBytes,
-				CodeCaveBytes, 
+				CodeCaveBytes,
 				saveOriginalBytes, 
 				putOriginalBytesAfterMnemonics,
+				caveAllocation,
+				hitCounterPointer,
+				registerStructurePointer,
+				executedEvent,
 				_mainReference);
 		}
 	}

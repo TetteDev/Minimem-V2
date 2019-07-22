@@ -155,7 +155,6 @@ namespace Minimem.Features
 			return Task.Run(() => FindPatternMany(processModule, pattern, resultAbsolute));
 		}
 
-
 		public List<Classes.MultiAobResultItem> CEFindPattern(string[][] byteArrays, bool readable = true, bool writable = false, bool executable = true, long start = 0, long end = long.MaxValue)
 		{
 			if (_mainReference.ProcessHandle == IntPtr.Zero) throw new Exception("Read/Write Handle cannot be Zero");
